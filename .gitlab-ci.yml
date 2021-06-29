@@ -1,0 +1,45 @@
+# The following variables are automatically passed down to the Postgres container
+# as well as the Ruby container and available within each.
+variables:
+  HTTPS_PROXY: "https://10.1.1.1:8090"
+  HTTP_PROXY: "https://10.1.1.1:8090"
+  POSTGRES_DB: "my_custom_db"
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "example"
+  PGDATA: "/var/lib/postgresql/data"
+  POSTGRES_INITDB_ARGS: "--encoding=UTF8 --data-checksums"
+
+services:
+  - name: postgres:11.7
+    alias: db
+    entrypoint: ["docker-entrypoint.sh"]
+    command: ["postgres"]
+
+image:
+  name: ruby:2.6
+  entrypoint: ["/bin/bash"]
+
+before_script:
+  - bundle install
+
+test:
+  script:
+    - bundle exec rake spec
+
+#default:
+#  image:
+#    name: ruby:2.6
+#    entrypoint: ["/bin/bash"]
+#
+#  services:
+#    - name: my-postgres:11.7
+#      alias: db-postgres
+#      entrypoint: ["/usr/local/bin/db-postgres"]
+#      command: ["start"]
+#
+#  before_script:
+#    - bundle install
+#
+#test:
+#  script:
+#    - bundle exec rake spec
