@@ -1,6 +1,7 @@
-job:
-#  services:
-#    - python:3.8
+job_python:
+  services:
+    - python:3.8.10
   image: python:3.8.10-slim
   script:
     - python --version
+  tags: [so]
