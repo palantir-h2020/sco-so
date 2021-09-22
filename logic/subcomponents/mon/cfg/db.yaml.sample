@@ -1,0 +1,11 @@
+general:
+  host: 127.0.0.1
+  port: 27017
+
+db:
+  name: shield-so
+  user: user
+  password: user
+  auth_source: admin
+  admin_username: admin
+  admin_password: adminpass
