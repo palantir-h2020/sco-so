@@ -1,7 +1,9 @@
-job_python:
-  services:
-    - python:3.8.10
-  image: python:3.8.10-slim
+.sco-so-mon-deployment: &sco-so-mon-deployment
+  - cd deploy && ./docker-deploy.sh -s mon
+
+sco-so-mon-check-status:
+  before_script:
+    - *sco-so-mon-deployment
   script:
-    - python --version
-  tags: [so]
+    - curl -Is http://127.0.0.1:50104/status | head -n 1
+  tags: [sco-so-mon]
