@@ -1,0 +1,18 @@
+**/dbl/data/*
+
+**/logs/*
+
+# Ignore some of the deploy/docker files under the subcomponents, but not under the root
+**/deploy/docker/**
+!**/deploy/docker/docker-compose.yml
+#!**/deploy/docker/Dockerfile
+!deploy/docker/**
+# Ignore some of the deploy/kubernetes files under the subcomponents, but not under the root
+**/deploy/kubernetes/**
+!deploy/kubernetes/*.yaml*
+!deploy/kubernetes/*.sh*
+
+# General
+__pycache__
+*.pyc
+*.swp
