@@ -1,11 +1,11 @@
 general:
-  host: 127.0.0.1
+  host: so-db
   port: 27017
 
 db:
-  name: shield-so
-  user: user
-  password: user
+  name: mon
+  user: so
+  password: so
   auth_source: admin
-  admin_username: admin
-  admin_password: adminpass
+  admin_username: so
+  admin_password: so

@@ -6,6 +6,7 @@
 
 from mongoengine import EmbeddedDocument, StringField
 
+
 class PrometheusTargetsOperation(EmbeddedDocument):
     """
     Document to save targets operations add, modify, delete
@@ -13,4 +14,3 @@ class PrometheusTargetsOperation(EmbeddedDocument):
     operation = StringField()
     current_target = StringField()
     new_target = StringField()
-

@@ -37,7 +37,7 @@ def vnf_list() -> HttpResponse:
 
 @so_blueprints.route("/mon/targets", methods=["GET"])
 def target_list() -> HttpResponse:
-    data = prometheus_targets_handler.target_list()
+    data = {"targets": prometheus_targets_handler.targets_list()}
     return HttpResponse.formatted(data, HttpCode.OK)
 
 

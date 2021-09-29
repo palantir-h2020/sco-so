@@ -6,9 +6,6 @@
 
 from common.server.http.http_code import HttpCode
 from handlers.prometheus_targets_handler import PrometheusTargetsHandler
-from common.db.mongo_connector import MongoConnector
-#from common.db.models.prometheus_targets_model import PrometheusTargets
-#from common.db.models.prometheus_targets_operation import PrometheusTargetsOperation
 from flask import make_response
 
 
@@ -19,13 +16,10 @@ class PrometheusTarget(object):
         targets_file_name = "/opt/prometheus-targets.json"
         self.target_handler = PrometheusTargetsHandler(targets_file_name)
 
-    def target_list(self):
-        # TODO: retrieve targets from the MongoDB
-        return []
+    def targets_list(self):
+        return self.target_handler.list_targets()
 
     def update_target(self, request) -> HttpCode:
-        # TODO: persist all targets (added, edited, delete) in the common
-        # DB (MongoDB)
         request_body = request.json
         target_url = ""
         new_url = ""
@@ -46,11 +40,12 @@ class PrometheusTarget(object):
         # flag indicating it suceeded or failed
         # and thus this change would be reflected in return_code
         if request.method == "POST":
-            self.target_handler.add_target(target_url)
+            return_code = self.target_handler.add_target(target_url)
         elif request.method == "PUT":
-            self.target_handler.replace_target(target_url, new_url)
+            return_code = self.target_handler.replace_target(
+                    target_url, new_url)
         elif request.method == "DELETE":
-            self.target_handler.delete_target(target_url)
+            return_code = self.target_handler.delete_target(target_url)
         else:
             return_code = HttpCode.METH_NOT_ALLOW
         return return_code

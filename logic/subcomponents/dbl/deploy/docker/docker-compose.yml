@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  so_db:
+    image: mongo
+    container_name: so-db
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo "db.runCommand('ping').ok" | mongo so-db:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - ${PWD}/../../data:/data/db
+    networks:
+      - so-db
+
+networks:
+  so-db:
+    driver: bridge

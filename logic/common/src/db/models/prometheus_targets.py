@@ -4,8 +4,11 @@
 # Copyright 2021-present i2CAT
 # All rights reserved
 
-from mongoengine import DateField, DictField, Document, EmbeddedDocumentField, ListField, StringField
-from prometheus_targets_operation import PrometheusTargetsOperation
+from mongoengine import DateField, Document,\
+    EmbeddedDocumentField, ListField, StringField
+from common.db.models.prometheus_targets_operation\
+    import PrometheusTargetsOperation
+
 
 class PrometheusTargets(Document):
     """
@@ -14,5 +17,4 @@ class PrometheusTargets(Document):
     """
     targets = ListField(StringField())
     date = DateField()
-    modification = DictField(EmbeddedDocumentField(PrometheusTargetsOperation))
-
+    modification = EmbeddedDocumentField(PrometheusTargetsOperation)

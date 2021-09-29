@@ -89,8 +89,8 @@ curl http://127.0.0.1:50104/mon/vnf
 ```
 
 ```
-curl http://127.0.0.1:50104/mon/targets
-curl -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
-curl -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50104/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
-curl -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
+curl -i http://127.0.0.1:50104/mon/targets
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50104/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
 ```
