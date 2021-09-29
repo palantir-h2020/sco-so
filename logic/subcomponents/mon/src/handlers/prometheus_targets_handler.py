@@ -4,6 +4,9 @@
 # Copyright 2021-present i2CAT
 # All rights reserved
 
+from common.db.mongo_connector import MongoConnector
+#from common.db.models.prometheus_targets_model import PrometheusTargets
+#from common.db.models.prometheus_targets_operation import PrometheusTargetsOperation
 
 import copy
 import json

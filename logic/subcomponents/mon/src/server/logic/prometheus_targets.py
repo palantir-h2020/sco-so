@@ -6,6 +6,9 @@
 
 from common.server.http.http_code import HttpCode
 from handlers.prometheus_targets_handler import PrometheusTargetsHandler
+from common.db.mongo_connector import MongoConnector
+#from common.db.models.prometheus_targets_model import PrometheusTargets
+#from common.db.models.prometheus_targets_operation import PrometheusTargetsOperation
 from flask import make_response
 
 
