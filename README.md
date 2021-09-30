@@ -50,11 +50,11 @@ cd deploy
 * `acl`: 50100
 * `api`: 50101
 * `cfg`: 50102
-* `dbl`: 27107
-* `lcm`: 50103
-* `mon`: 50104
-* `pkg`: 50105
-* `pol`: 50106
+* `dbl`: 50103
+* `lcm`: 50104
+* `mon`: 50105
+* `pkg`: 50106
+* `pol`: 50107
 
 # API
 
@@ -65,19 +65,19 @@ cd deploy
 #### Base method
 
 ```
-curl http://127.0.0.1:50104/mon
+curl http://127.0.0.1:50105/mon
 ```
 
 #### VIM metrics
 
 ```
-curl http://127.0.0.1:50104/mon/vim
+curl http://127.0.0.1:50105/mon/vim
 ```
 
 #### VNF metrics
 
 ```
-curl http://127.0.0.1:50104/mon/vnf
+curl http://127.0.0.1:50105/mon/vnf
 ```
 
 #### Prometheus targets
@@ -89,8 +89,8 @@ curl http://127.0.0.1:50104/mon/vnf
 ```
 
 ```
-curl -i http://127.0.0.1:50104/mon/targets
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50104/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50104/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
+curl -i http://127.0.0.1:50105/mon/targets
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50105/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50105/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50105/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
 ```

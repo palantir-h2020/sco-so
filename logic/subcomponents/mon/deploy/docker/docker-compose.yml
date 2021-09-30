@@ -53,5 +53,7 @@ services:
 networks:
   so-db:
     driver: bridge
+    external: true
   so-core:
     driver: bridge
+    external: true

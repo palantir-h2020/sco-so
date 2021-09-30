@@ -32,6 +32,13 @@ source deploy-vars.sh
 source deploy-opts.sh
 
 
+function docker_create_networks() {
+  declare -a docker_preexisting_networks=("so-core" "so-db")
+  for docker_network in "${docker_preexisting_networks[@]}"; do
+      docker network create ${docker_network}
+  done
+}
+
 function copy_replace_files() {
     subcomponent="$1"
     subc_base=$(basename $subcomponent)
@@ -97,4 +104,5 @@ function deploy_subcomponents() {
 }
 
 
+create_docker_networks
 deploy_subcomponents

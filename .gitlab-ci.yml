@@ -5,5 +5,5 @@ sco-so-mon-check-status:
   before_script:
     - *sco-so-mon-deployment
   script:
-    - curl -Is http://127.0.0.1:50104/status | head -n 1
+    - curl -Is http://127.0.0.1:50105/status | head -n 1
   tags: [sco-so-mon]
