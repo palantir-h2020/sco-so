@@ -1,6 +1,6 @@
 general:
   host: so-db
-  port: 27017
+  port: 50103
 
 db:
   name: mon
