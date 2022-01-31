@@ -1,0 +1,105 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright 2021-present i2CAT
+# All rights reserved
+
+from datetime import datetime
+
+from common.config.parser.fullparser import FullConfParser
+from common.db.models.prometheus_targets import PrometheusTargets
+from common.db.models.pushgateway_req import PushgatewayRequest
+from common.db.models.pushgateway_res import PushgatewayResponse
+from .execute_command import ExecuteCommand
+from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
+
+
+class Pushgateway():
+    """
+    Executes a remote command on VNFs and persists it on Prometheus
+    Pushgateway
+    """
+
+    def parser(self):
+        general_conf = FullConfParser()
+        mon_conf = general_conf.get("mon.yaml")
+        metrics = mon_conf.get("metrics")
+        targets = metrics.get("targets")
+        self.allowed_commands = targets.get("allowed_commands")
+        mon_category = mon_conf.get("prometheus")
+        pushgateway_conf = mon_category.get("pushgateway")
+        self.pushgateway_server_endpoint = "{}://{}:{}".format(
+            pushgateway_conf.get("protocol"),
+            pushgateway_conf.get("host"),
+            pushgateway_conf.get("port"),
+        )
+
+    def persist_requests_mongodb(self):
+        pushgateway_request_model = PushgatewayRequest()
+        pushgateway_request_model.vnf_id = self.vnf_id
+        pushgateway_request_model.vnf_ip = self.vnf_ip
+        pushgateway_request_model.metric_name = self.metric_name
+        pushgateway_request_model.metric_command = self.metric_command
+        pushgateway_request_model.date = datetime.now()
+        pushgateway_request_model.save()
+
+    def persist_response_mongodb(self):
+        pushgateway_response_model = PushgatewayResponse()
+        pushgateway_response_model.vnf_id = self.vnf_id
+        pushgateway_response_model.vnf_ip = self.vnf_ip
+        pushgateway_response_model.metric_name = self.metric_name
+        pushgateway_response_model.metric_command = self.metric_command
+        pushgateway_response_model.data = self.data
+        pushgateway_response_model.date = datetime.now()
+        pushgateway_response_model.save()
+
+    def persist_metric_prometheus_pushgateway(self, request):
+
+        request_body = request.json
+        self.vnf_id = request_body.get("vnf-id")
+        self.vnf_ip = request_body.get("vnf-ip")
+        self.metric_name = request_body.get("metric-name")
+        self.metric_command = request_body.get("metric-command")
+
+        targets_list = PrometheusTargets.objects.order_by("-id").first().targets
+        if self.vnf_id in targets_list:
+            self.persist_requests_mongodb()
+            self.parser()
+
+            parsed_metric_command = self.metric_command.split(";")
+            parsed_metric_command1 = parsed_metric_command[0].split("&&")
+            parsed_metric_command2 = parsed_metric_command1[0].split(" ")
+
+            if parsed_metric_command2[0] in self.allowed_commands:
+                self.data = ExecuteCommand.execute_command(
+                    self.vnf_ip, parsed_metric_command1[0]
+                )
+                self.result = {
+                    "vnf-id": self.vnf_id,
+                    "metric-name": self.metric_name,
+                    "metric-command": parsed_metric_command1[0],
+                    "data": self.data,
+                }
+
+                self.persist_response_mongodb()
+
+                registry = CollectorRegistry()
+                g = Gauge(self.metric_name, self.metric_name, registry=registry)
+                g.set(self.data)
+                try:
+                    pushadd_to_gateway("localhost:9091", job=self.vnf_ip, registry=registry)
+                except:
+                    return "{} Pushgateway is not reachable, please check the connection ".format(
+                        self.pushgateway_server_endpoint
+                    )
+                return self.result
+            else:
+                self.result = {
+                    "vnf-id": self.vnf_id,
+                    "metric-name": self.metric_name,
+                    "metric-command": self.metric_command,
+                    "data": "Command not allowed",
+                }
+                return self.result
+        else:
+            return "{} target is not registered".format(self.vnf_id)

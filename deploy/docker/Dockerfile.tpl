@@ -24,14 +24,19 @@ COPY ./src/server/blueprints/* /opt/blueprints/
 # Copy common-related blueprints sources as well
 COPY ./common/src/server/http/blueprints/* /opt/blueprints/
 
-# Copy local-related configuration for the module
+# Copy local module-related configuration for the module
 RUN mkdir -p /opt/cfg
 COPY ./cfg /opt/cfg/
+# Copy local deployment-related configuration for the module
+RUN mkdir -p /opt/deploy
+COPY ./deploy/local /opt/deploy/
 
 # Install pre-requisites
 RUN apt-get update && \
-    apt-get install -y python3-pip
+    apt-get install -y python3-pip vim
 RUN /usr/local/bin/python -m pip install --upgrade pip
+# General steps
+RUN touch ~/.vimrc
 
 WORKDIR /opt/reqs
 

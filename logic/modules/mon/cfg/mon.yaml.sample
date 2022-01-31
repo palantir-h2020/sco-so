@@ -1,0 +1,42 @@
+general:
+  debug: "True"
+
+prometheus:
+  protocol: http
+  host: localhost
+  port: 9090
+  user-name: ubuntu
+  query_endpoint: api/v1/query?query=
+  targets:
+    file: "./deploy/local/prometheus-targets.json"
+  exporter:
+    protocol: http
+    port: 9100
+    query_endpoint: metrics
+
+metrics:
+  targets:
+    # sec
+    scrape_interval: 5
+    allowed_commands:
+      - ls
+      - df
+      - top
+      - lsof
+      - tcpdump
+      - netstat
+      - htop
+      - lotop
+      - lostat
+      - iptraf
+      - ps
+      - free
+      - iostat
+      - vmstat
+
+infrastructure:
+  tenant1-k8s-cluster:
+     id: 3f5eb7fa-a58d-4589-a93b-7ae403716a0f
+     config:
+       file: "./deploy/local/tenant1-k8s-cluster.yaml"
+     tenant: tenant1
