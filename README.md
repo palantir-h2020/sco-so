@@ -1,18 +1,6 @@
-# SCO/SO API
+# SCO/SO
 
-The SCO/SO used in PALANTIR is a Security Orchestrator that consists of different subcomponents:
-
-* `acl`: layer devoted to access control
-* `api`: exposed public API endpoints
-* `cfg`: exposes SCO/SO configuration
-* `dbl`: layer devoted to database, keeping tables for each subcomponent
-* `lcm`: the life-cycle management of all functionality, called from the API service
-* `mon`: monitoring of the virtual network services, as well as the VIM
-* `pkg`: handling of the packages for the virtual network functions and services
-* `pol`: management of the received policies and its application onto the virtual network services
-* `uti`: utilities, shared functionality copied into specific subcoponents
-
-This component takes care of the onboarding of the Network Security Functions (NSFs) provided in the project and in managing its lifecycle, including its day-x configuration. To do so, some of these subcomponents will directly interact with the [OSM MANO](https://osm.etsi.org).
+The SO subcomponent takes care of the onboarding of the Network Security Functions (NSFs) provided in the project and in managing its lifecycle, including its day-x configuration. To do so, some of these modules will directly interact with the [OSM MANO](https://osm.etsi.org).
 
 # Installation
 
@@ -31,66 +19,44 @@ Regarding the infrastructure:
 
 # Deployment
 
-## Docker
+## venv
 
 ```
 cd deploy
-./docker-deploy.sh [-s <subcomponent>] [-m]
+# Direct access to venv
+source deploy.sh
+# Specific module deployment
+./venv-deploy.sh -s <module>
 ```
 
-## Kubernetes
+## Docker (WIP)
 
 ```
 cd deploy
-./kubernetes-deploy.sh [-s <subcomponent>] [-m] [-r]
+./docker-deploy.sh -s <module>
 ```
 
-# Default ports
-
-* `acl`: 50100
-* `api`: 50101
-* `cfg`: 50102
-* `dbl`: 50103
-* `lcm`: 50104
-* `mon`: 50105
-* `pkg`: 50106
-* `pol`: 50107
-
-# API
-
-## mon
-
-### Common
-
-#### Base method
+## Kubernetes (WIP)
 
 ```
-curl http://127.0.0.1:50105/mon
+cd deploy
+./kubernetes-deploy.sh -s <module>
 ```
 
-#### VIM metrics
+# Details
 
-```
-curl http://127.0.0.1:50105/mon/vim
-```
+The SCO/SO used in PALANTIR is a Security Orchestrator that consists of different modules:
 
-#### VNF metrics
+| Module |  Port | Docs | Status |
+|:------------:|:-----:|:--------:|:------:|
+| aac          | 50100 | [docs](logic/modules/aac/README.md) |  TBD   |
+| api          | 50101 | [docs](logic/modules/api/README.md) |  TBD   |
+| atr          | 50102 | [docs](logic/modules/atr/README.md) |  TBD   |
+| cfg          | 50103 | [docs](logic/modules/cfg/README.md) |  TBD   |
+| dbl          | 50104 | N/A |  WIP   |
+| lcm          | 50105 | [docs](logic/modules/lcm/README.md) |  WIP   |
+| mon          | 50106 | [docs](logic/modules/mon/README.md) |  WIP   |
+| pkg          | 50107 | [docs](logic/modules/pkg/README.md) |  TBD   |
+| pol          | 50108 | [docs](logic/modules/pol/README.md) |  TBD   |
 
-```
-curl http://127.0.0.1:50105/mon/vnf
-```
-
-#### Prometheus targets
-
-*Note*: the file located at "logic/subcomponents/mon/deploy/docker/local/prometheus-targets.json" is modified to add, replace or delete Prometheus targets. This file is delivered empty on purpose, and after adding new targets it should follow a format like this:
-
-```
-[{"labels": {"job": "vnfs", "group": "vnfs", "env": "prod"}, "targets": ["10.10.10.11:9100", ..., "10.10.10.20:9100"]}]
-```
-
-```
-curl -i http://127.0.0.1:50105/mon/targets
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50105/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50105/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50105/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
-```
+*Note*: in "venv" deployment mode, the port for "dbl" is the default: 27017

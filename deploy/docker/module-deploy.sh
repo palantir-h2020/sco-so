@@ -10,7 +10,7 @@ build_only=$1
 
 docker_image_prefix="sco_so"
 
-# Copy utils-related dependencies and sources to the subcomponent's context
+# Copy utils-related dependencies and sources to the module's context
 common_reqs_path="${PWD}/../../../../common/deploy/reqs"
 mkdir -p ${PWD}/reqs/common
 if [[ -d ${common_reqs_path} ]]; then
@@ -23,7 +23,7 @@ if [[ -d ${common_logic_path} ]]; then
     cp -Rp ${common_logic_path} .
 fi
 
-# Copy subcomponent-related dependencies and sources to the subcomponent's context
+# Copy module-related dependencies and sources to the module's context
 subc_reqs_path="${PWD}/../reqs"
 mkdir -p ${PWD}/reqs/local
 if [[ -d ${subc_reqs_path} ]]; then
@@ -36,7 +36,7 @@ if [[ -d ${subc_logic_path} ]]; then
     cp -Rp ${subc_logic_path} .
 fi
 
-# Copy local-related configuration for the subcomponent
+# Copy local-related configuration for the module
 # and use sample configuration files when needed
 subc_cfg_path="${PWD}/../../cfg"
 if [[ -d ${subc_cfg_path} ]]; then
@@ -62,8 +62,8 @@ if [[ "${build_only}" != "build" ]] && [[ -f docker-compose.yml ]]; then
     docker-compose ps
 else
     # Build the image only if not already present (two rows: headers & image)
-    if [[ $(docker image ls ${docker_image_prefix}_${SO_SUBC_NAME} | wc -l) -lt 2 ]]; then
+    if [[ $(docker image ls ${docker_image_prefix}_${SO_MODL_NAME} | wc -l) -lt 2 ]]; then
         # Explicitly stating the Dockerfile name, even if the default option
-        docker build -t ${docker_image_prefix}_${SO_SUBC_NAME} -f Dockerfile .
+        docker build -t ${docker_image_prefix}_${SO_MODL_NAME} -f Dockerfile .
     fi
 fi

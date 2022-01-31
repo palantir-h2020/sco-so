@@ -15,8 +15,8 @@ docker_registry_url="docker-registry:${docker_registry_port}"
 # DEPLOYMENT (COMMON)
 #
 
-deploy_script="subcomponent-deploy.sh"
-undeploy_script="subcomponent-undeploy.sh"
+deploy_script="module-deploy.sh"
+undeploy_script="module-undeploy.sh"
 
 #
 # DOCKER DEPLOYMENT

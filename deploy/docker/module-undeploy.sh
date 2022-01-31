@@ -15,7 +15,7 @@ fi
 mkdir -p ${PWD}/reqs/utils
 rm -rf ${PWD}/uti
 
-# Remove subcomponent-related dependencies, sources and configuration
+# Remove module-related dependencies, sources and configuration
 mkdir -p ${PWD}/reqs/local
 rm -rf ${PWD}/src
 rm -rf ${PWD}/cfg

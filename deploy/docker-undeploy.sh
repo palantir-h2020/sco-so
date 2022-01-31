@@ -11,9 +11,9 @@
 ## date            2021/05/20
 ## version         0.1
 ## usage           ./docker-undeploy.sh [-h] |
-##                                      [-s ${subcomponent_name}]
+##                                      [-s ${module_name}]
 ##                                     -h: Print help
-##                                     -s: Select a specific subcomponent
+##                                     -s: Select a specific module
 ## notes           N/A
 ## bash_version    5.0-6ubuntu1.1
 ##
@@ -33,24 +33,24 @@ source deploy-opts.sh
 
 
 function setup_env_vars() {
-    subcomponent="$1"
-    subc_base=$(basename $subcomponent)
-    subc_deploy_path=${subcomponent}/deploy/docker
+    module="$1"
+    subc_base=$(basename $module)
+    subc_deploy_path=${module}/deploy/docker
     echo "Reading env vars..."
-    fetch_env_vars "${subcomponent}/deploy/env"
+    fetch_env_vars "${module}/deploy/env"
 }
 
 function setup_subc_deploy_folder() {
-    subcomponent="$1"
-    subc_deploy_path=${subcomponent}/deploy/docker
+    module="$1"
+    subc_deploy_path=${module}/deploy/docker
 
     mkdir -p ${subc_deploy_path}
-    # Copy undeployment script for subcomponent in each own's deploy/docker folder
+    # Copy undeployment script for module in each own's deploy/docker folder
     cp -Rp ${PWD}/docker/* ${subc_deploy_path}
 
     if [ -f ${subc_deploy_path}/${undeploy_script} ]; then
         if [ -f ${subc_deploy_path}/${docker_compose} ]; then
-            title_info "Undeploying subcomponent: ${subc_base}"
+            title_info "Undeploying module: ${subc_base}"
             cd ${subc_deploy_path}
             ./${undeploy_script} || true
             cd $current
@@ -59,16 +59,16 @@ function setup_subc_deploy_folder() {
 }
 
 
-function undeploy_subcomponents() {
-    for subcomponent in ${PWD}/../logic/subcomponents/*; do
-        subc_base=$(basename $subcomponent)
+function undeploy_modules() {
+    for module in ${PWD}/../logic/modules/*; do
+        subc_base=$(basename $module)
 
-        if [ -z $SUBCOMPONENT ] || ([ ! -z $SUBCOMPONENT ] && [ $subc_base == $SUBCOMPONENT ]); then
-	    #echo "UNDEPLOYING: ${subcomponent}"
-            setup_env_vars "${subcomponent}"
-            setup_subc_deploy_folder "${subcomponent}"
+        if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $subc_base == $MODULE ]); then
+	    #echo "UNDEPLOYING: ${module}"
+            setup_env_vars "${module}"
+            setup_subc_deploy_folder "${module}"
         fi
     done
 }
 
-undeploy_subcomponents
+undeploy_modules

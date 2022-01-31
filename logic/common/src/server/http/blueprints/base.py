@@ -17,10 +17,11 @@ so_blueprints = Blueprint("server__base", __name__)
 
 @so_blueprints.route("/", methods=["GET"])
 def root():
-    data = {"name": str(os.getenv("SO_SUBC_NAME", "server_base"))} 
+    data = {"name": str(os.getenv("SO_MODL_NAME", "server_base"))}
     return HttpResponse.formatted(data, HttpCode.OK)
+
 
 @so_blueprints.route("/status", methods=["GET"])
 def status():
-    data = {"status": "success"} 
+    data = {"status": "success"}
     return HttpResponse.formatted(data, HttpCode.OK)

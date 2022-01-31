@@ -1,5 +1,5 @@
 # Note: this variable must be replaced before building the image
-FROM python:3.8-slim AS so-${SO_SUBC_NAME}
+FROM python:3.8-slim AS so-${SO_MODL_NAME}
 
 # Copy local-related dependencies into container
 RUN mkdir -p /opt/reqs/local
@@ -12,11 +12,11 @@ WORKDIR /opt/
 # Copy local-related sources into container
 COPY ./src/ /opt/
 # Copy common-related sources into container
-RUN mkdir -p /opt/common
+RUN (mkdir -p /opt/common || true)
 COPY ./common/src /opt/common/
 
 # Copy local-related sources for the HTTP server into the common-related sources
-# This is done to place the subcomponent's Flask blueprints into the specific
+# This is done to place the module's Flask blueprints into the specific
 # folder in the common sources, acting as a drop-in plug-in
 RUN mkdir -p /opt/blueprints
 #COPY ./src/server/blueprints/* /opt/common/src/server/http/blueprints/
@@ -24,7 +24,7 @@ COPY ./src/server/blueprints/* /opt/blueprints/
 # Copy common-related blueprints sources as well
 COPY ./common/src/server/http/blueprints/* /opt/blueprints/
 
-# Copy local-related configuration for the subcomponent
+# Copy local-related configuration for the module
 RUN mkdir -p /opt/cfg
 COPY ./cfg /opt/cfg/
 
@@ -50,4 +50,5 @@ COPY run.sh /opt/
 
 WORKDIR /opt
 CMD ["python3", "main.py"]
+#CMD ["sleep", "infinity"]
 #ENTRYPOINT "/opt/run.sh"

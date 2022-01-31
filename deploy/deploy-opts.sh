@@ -74,7 +74,7 @@ function replace_specific_vars() {
         echo "Replacing variables: $(realpath ${template_file}) > $(realpath ${template_file_subst})"
         # New method: fine-grained, only substitutes a specific set of variables under the .env file
         # and others defined in the "fetch_env_vars" method. Example:
-        # $ envsubst '${SO_SUBC_NAME} ${SO_SUBC_API_PORT}' < $template_file > $template_file_subst
+        # $ envsubst '${SO_MODL_NAME} ${SO_MODL_API_PORT}' < $template_file > $template_file_subst
         envsubst "${ENV_VARS_NAMES}" < $template_file > $template_file_subst
     done
 }
@@ -161,10 +161,10 @@ function get_dirs_under_path() {
 
 function usage() {
     echo -e "Usage: $0 [OPTIONS]"
-    echo -e "Deploy or undeploy the SO subcomponents"
+    echo -e "Deploy or undeploy the SO modules"
     echo -e "  OPTIONS"
     echo -e "     -h / --help:    print this help"
-    echo -e "     [-s]:           operate on a specific subcomponent from the following: $(get_dirs_under_path ../logic/subcomponents)"
+    echo -e "     [-s]:           operate on a specific module from the following: $(get_dirs_under_path ../logic/module)"
     if [[ $0 == *"-deploy"* ]]; then
       echo -e "     [-m]:           only create container images (\"build\") or create+instantiate (default)"
     fi
@@ -174,9 +174,9 @@ function usage() {
 }
 
 
-# Subcomponent to deploy
-SUBCOMPONENT=""
-# Mode: "build" (generate Docker images) or deploy (generate+instante, default)
+# Module to deploy
+MODULE=""
+# Mode: "build" (generate Docker images) or deploy (generate+instantiate, default)
 MODE=""
 REGISTRY="false"
 # Counter with the number of selected options
@@ -185,7 +185,7 @@ OPTIONS_SELECTED=0
 while getopts ":s:m:-: rh" o; do
     case "${o}" in
         s)
-            SUBCOMPONENT="${OPTARG}"
+            MODULE="${OPTARG}"
             OPTIONS_SELECTED=$((${OPTIONS_SELECTED}+1))
             ;;
         m)
