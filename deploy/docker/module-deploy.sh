@@ -49,8 +49,8 @@ if [[ -d ${subc_cfg_path} ]]; then
     done
 fi
 
-# Copy local-related files (such as common scripts or cfg files)
-# in order to be used
+# Copy deployment local-related files (such as common scripts
+# or cfg files) in order to be used
 subc_loc_path="${PWD}/../local"
 if [[ -d ${subc_loc_path} ]]; then
     cp -Rp ${subc_loc_path} .
