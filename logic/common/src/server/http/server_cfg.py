@@ -6,7 +6,7 @@
 
 
 from common.config.parser.fullparser import FullConfParser
-from common.exception.exception import Exception
+from common.exception.exception import SOException
 from common.db.manager import DBManager
 from flask import Flask
 from flask import g
@@ -52,15 +52,15 @@ class ServerConfig(object):
 
         @app.errorhandler(HttpCode.BAD_REQUEST)
         def bad_request(error):
-            return Exception.bad_request(error)
+            return SOException.bad_request(error)
 
         @app.errorhandler(HttpCode.NOT_FOUND)
         def not_found(error):
-            return Exception.not_found(error)
+            return SOException.not_found(error)
 
         @app.errorhandler(HttpCode.INTERNAL_ERROR)
         def internal_error(error):
-            return Exception.internal_error(error)
+            return SOException.internal_error(error)
 
     def __import_config(self):
         """

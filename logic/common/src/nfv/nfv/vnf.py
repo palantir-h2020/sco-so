@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common.core.exception import ScoException
+from common.exception.exception import SOException
 from common.nfv.nfvo.osm.osm_r10 import OSMR10
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from typing import Dict, List
@@ -33,7 +33,7 @@ class VnsfoVnsf:
             else:
                 self.orchestrator = OSMR10()
         except Exception:
-            raise ScoException(
+            raise SOException(
                 "Cannot create instance of OSMR{}".format(release))
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 

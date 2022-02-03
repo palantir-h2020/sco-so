@@ -9,4 +9,4 @@ security:
   verify_client_cert: 'False'
 
 performance:
-  parallel_workers: 4
+  parallel_workers: 1

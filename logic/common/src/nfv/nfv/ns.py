@@ -16,8 +16,8 @@
 # limitations under the License.
 
 from common.db.models.infra.node import Node as NodeModel
-from common.core.exception import ScoException
-from common.core.log import setup_custom_logger
+from common.exception.exception import SOException
+from common.log.log import setup_custom_logger
 from common.nfv.nfvo.osm.exception import OSMFailedInstantiation
 from common.nfv.nfvo.osm.osm_r10 import OSMR10
 from flask import current_app
@@ -37,7 +37,7 @@ class VnsfoNs:
             else:
                 self.orchestrator = OSMR10()
         except Exception:
-            raise ScoException(
+            raise SOException(
                 "Cannot create instance of OSMR{}".format(release))
 
     def get_nsr_config(self, ns_name=None):
@@ -87,11 +87,11 @@ class VnsfoNs:
                     LOGGER.info(const_vnf)
                     if const_vnf["operational-status"].lower() == "vim_error":
                         LOGGER.info("inside")
-                        ScoException.internal_error(
+                        SOException.internal_error(
                             "Error in the infrastructure. " +
                             "Details={}".format(status_summary))
-                # ScoException.conflict_from_client(operational_status)
-                ScoException.internal_error(
+                # SOException.conflict_from_client(operational_status)
+                SOException.internal_error(
                     "Cannot instantiate NS. Details={}".format(status_summary))
             if operational_status == target_status and \
                "constituent-vn-instances" in nss["ns"][0].keys():
@@ -100,10 +100,10 @@ class VnsfoNs:
                 if len(nss["ns"]) == 0:
                     # No VDUs, returning
                     return
-                for vnfr in nss["ns"][0]["constituent-vnf-instances"]:
-                    vnfr_name = vnfr["vnfr-name"]
-                    vdu_ip = vnfr["ip"]
-                    vnfr_id = vnfr["vnfr-id"]
+                # for vnfr in nss["ns"][0]["constituent-vnf-instances"]:
+                #     vnfr_name = vnfr["vnfr-name"]
+                #     vdu_ip = vnfr["ip"]
+                #     vnfr_id = vnfr["vnfr-id"]
                 if "authentication" not in instantiation_data:
                     instantiation_data["authentication"] = {
                         "vnf-user": self.orchestrator.vnf_user,

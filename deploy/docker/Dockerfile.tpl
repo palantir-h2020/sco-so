@@ -53,9 +53,6 @@ RUN ([ -f common/apt ] && (cat common/apt | xargs apt-get install -y)) || true
 RUN ([ -f local/pip ] && pip3 install -r local/pip) || true
 RUN ([ -f local/apt ] && (cat local/apt | xargs apt-get install -y)) || true
 
-COPY run.sh ${SO_ROOT}/
-
 WORKDIR ${SO_ROOT}
 #CMD ["python3", "main.py"]
 CMD ["sleep", "infinity"]
-#ENTRYPOINT "${SO_ROOT}/run.sh"

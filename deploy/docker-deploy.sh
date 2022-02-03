@@ -68,12 +68,16 @@ function copy_replace_files() {
     # Copy deployment variables
     cp -Rp ${PWD}/deploy-vars.sh ${subc_deploy_path}
     # Copy Dockerfile template in each own's deploy/docker folder (if module does not have one already)
-    if [ ! -f ${subc_deploy_path}/${docker_file} ] && [ -f ${subc_deploy_path}/${docker_compose} ]; then
-        # Replace env vars as needed
-        cp -Rp ${PWD}/docker/${docker_file}.tpl ${subc_deploy_path}/
-        echo "Replacing env vars in template=\"${subc_deploy_path}/${docker_file}.tpl\"..."
-        replace_vars "${subc_deploy_path}/${docker_file}.tpl"
+    if [ -f ${subc_deploy_path}/${docker_file} ]; then
+        error_exit "File \"$(realpath ${subc_deploy_path}/${docker_file})\" already exists"
     fi
+    if [ ! -f ${subc_deploy_path}/${docker_compose} ]; then
+        error_exit "File \"$(realpath ${subc_deploy_path}/${docker_compose})\" does not exist"
+    fi
+    # Replace env vars as needed
+    cp -Rp ${PWD}/docker/${docker_file}.tpl ${subc_deploy_path}/
+    echo "Replacing env vars in template=\"${subc_deploy_path}/${docker_file}.tpl\"..."
+    replace_vars "${subc_deploy_path}/${docker_file}.tpl"
 }
 
 function setup_subc_deploy_folder() {
@@ -90,15 +94,16 @@ function setup_subc_deploy_folder() {
 }
 
 function deploy_modules() {
+    # $MODULE: module name passed by parameter
+    # $module: module name iterated from all modules
     for module in ${PWD}/../logic/modules/*; do
         subc_base=$(basename $module)
         subc_deploy_path=${module}/deploy/docker
-
-        if [ -f ${subc_deploy_path}/${docker_compose} ]; then
-            title_info "Deploying module: ${subc_base}"
-        fi
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $subc_base == $MODULE ]); then
-            setup_subc_deploy_folder "${module}" "${MODULE}"
+	    if [ -d ${module} ]; then
+                title_info "Deploying module: ${subc_base}"
+                setup_subc_deploy_folder "${module}" "${MODULE}"
+	    fi
         fi
     done
 }

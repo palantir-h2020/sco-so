@@ -141,7 +141,7 @@ function fetch_env_vars_names() {
 
 
 #
-# DIRECTORIES
+# DIRECTORIES AND OTHERS
 #
 
 function get_dirs_under_path() {

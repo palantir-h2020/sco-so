@@ -5,7 +5,7 @@
 # All rights reserved
 
 
-from common.exception.exception import Exception
+from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from common.server.http import content
 from common.server.http.http_code import HttpCode
@@ -51,20 +51,19 @@ def get_attack_ns_mapping(attack_type):
 def instantiate_ns_request_check():
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
-            Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     exp_params_implicit = ["attack_type"]
     exp_params_explicit = ["ns_name", "instance_name"]
     if not content.data_in_request(request, exp_params_implicit) and \
             not content.data_in_request(request, exp_params_explicit):
-        Exception.improper_usage("Missing parameters: any of {} or {}"
-                                 .format(exp_params_implicit,
-                                         exp_params_explicit))
+        SOException.improper_usage(
+                "Missing parameters: any of {} or {}"
+                .format(exp_params_implicit, exp_params_explicit))
     if (content.data_in_request(request, exp_params_implicit) and
             content.data_in_request(request, exp_params_explicit)):
-        Exception.improper_usage("Conflicting parameters: {} and {} \
-                                 cannot coexist"
-                                 .format(exp_params_implicit,
-                                         exp_params_explicit))
+        SOException.improper_usage(
+                "Conflicting parameters: {} and {} cannot coexist"
+                .format(exp_params_implicit, exp_params_explicit))
     instantiation_data = request.get_json()
     # When an attack type is provided, the SO consults the internal
     # mapping between Network Services and attacks and picks the NS
@@ -90,7 +89,7 @@ def instantiate_ns():
             msg = "Missing authentication parameters {0}".format(
                 ", ".join(missing_params))
             LOGGER.info(msg)
-            Exception.improper_usage(msg)
+            SOException.improper_usage(msg)
     if "isolation_policy" in instantiation_data:
         missing_params = check_isolation_params(
             instantiation_data["isolation_policy"])
@@ -98,7 +97,7 @@ def instantiate_ns():
             msg = "Missing isolation policy parameters {0}".format(
                     ", ".join(missing_params))
             LOGGER.info(msg)
-            Exception.improper_usage(msg)
+            SOException.improper_usage(msg)
     if "termination_policy" in instantiation_data:
         missing_params = check_isolation_params(
             instantiation_data["termination_policy"])
@@ -106,7 +105,7 @@ def instantiate_ns():
             msg = "Missing termination policy parameters {0}".format(
                     ", ".join(missing_params))
             LOGGER.info(msg)
-            Exception.improper_usage(msg)
+            SOException.improper_usage(msg)
     ns_object = VnsfoNs()
     result = ns_object.instantiate_ns(instantiation_data)
     if result.get("result", "") == "success":

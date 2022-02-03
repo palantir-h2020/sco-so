@@ -5,7 +5,7 @@
 # All rights reserved
 
 
-from common.exception.exception import Exception
+from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from flask import abort
 from flask import Blueprint
@@ -66,7 +66,7 @@ def store_network_device_config_flow(flow_id=None, flow=None):
     exp_ct = "application/xml"
     header_ct = request.headers.get("Content-Type", "")
     if header_ct is not None and exp_ct not in header_ct:
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     flow = request.data
     flow_data = Network().store_network_device_config_flow(flow_id, flow, True)
     return HttpResponse.json(HttpCode.OK, flow_data)
@@ -85,7 +85,7 @@ def store_network_device_running_flow(flow_id=None, flow=None):
     # In such situations, the Content-Type will be defined internally
     if header_ct is not None and not \
             any(map(lambda ct: ct in header_ct, exp_ct)):
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     flow = request.data
     Network().store_network_device_running_flow(flow_id, flow)
     # Trigger attestation right after SDN rules are inserted
@@ -95,9 +95,9 @@ def store_network_device_running_flow(flow_id=None, flow=None):
     try:
         attest_data = Network().attest_and_revert_switch()
     except NetworkConnectException as e:
-        Exception.internal_error(str(e))
+        SOException.internal_error(str(e))
     if not attest_data or attest_data is None:
-        Exception.internal_error("Cannot attest status of the device(s)")
+        SOException.internal_error("Cannot attest status of the device(s)")
     # Indicate whether the flows should keep the trusted state or not
     # For externally (manually pushed) rules, mark these as trusted
     is_device_trusted = True if attest_data.get("result", "") == \
@@ -138,7 +138,7 @@ def delete_node(node_id):
 def get_nodes(node_id=None):
     if node_id is not None:
         if bson.objectid.ObjectId.is_valid(node_id) is False:
-            Exception.improper_usage("Bad node_id: {0}".format(node_id))
+            SOException.improper_usage("Bad node_id: {0}".format(node_id))
     nodes = current_app.mongo.get_nodes(node_id)
     return HttpResponse.json(HttpCode.OK, nodes)
 
@@ -205,7 +205,7 @@ def terminate(node_id):
 def config_node(node_id):
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     config_data = request.get_json()
     fields = ["isolated", "disabled", "terminated"]
     action = None
@@ -213,23 +213,25 @@ def config_node(node_id):
         if field in config_data:
             action = field
     if action is None:
-        Exception.improper_usage("Config should be isolated or disabled")
+        SOException.improper_usage("Config should be isolated or disabled")
     if type(config_data[action]) is not bool:
-        Exception.improper_usage("{0} should be bool".format(action))
+        SOException.improper_usage("{0} should be bool".format(action))
     if action == "isolated" and config_data[action] is True:
         try:
             Node(node_id).isolate()
         except NodeSSHException:
             abort(500)
     elif config_data[action] is False:
-        Exception.improper_usage("Automated isolation revert not supported")
+        SOException.improper_usage(
+                "Automated isolation revert not supported")
     if action == "terminated" and config_data[action] is True:
         try:
             Node(node_id).terminate()
         except NodeSSHException:
             abort(500)
     elif config_data[action] is False:
-        Exception.improper_usage("Automated termination revert not supported")
+        SOException.improper_usage(
+                "Automated termination revert not supported")
     if action == "disabled" and config_data[action] is True:
         Node(node_id).disable()
     return ('', HttpCode.NO_CONTENT)
@@ -239,30 +241,32 @@ def config_node(node_id):
 def register_node():
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     node_data = request.get_json(silent=True)
     if node_data is None:
-        Exception.improper_usage("Body content does not follow type: {0}"
-                                 .format(exp_ct))
+        SOException.improper_usage(
+                "Body content does not follow type: {0}"
+                .format(exp_ct))
     missing_params = check_node_params(node_data)
     if len(missing_params) > 0:
-        Exception.improper_usage("Missing node parameters: {0}".format(
+        SOException.improper_usage("Missing node parameters: {0}".format(
             ", ".join(missing_params)))
     missing_auth_params = check_auth_params(node_data["authentication"])
     if len(missing_auth_params) > 0:
-        Exception.improper_usage(
+        SOException.improper_usage(
             "Missing authentication parameters: {0}".format(
                 ", ".join(missing_auth_params)))
     missing_isolation_params = check_isolation_params(
         node_data["isolation_policy"])
     if len(missing_isolation_params) > 0:
-        Exception.improper_usage("Missing isolation parameters: {0}".format(
+        SOException.improper_usage("Missing isolation parameters: {0}".format(
             ", ".join(missing_isolation_params)))
     missing_termination_params = check_isolation_params(
         node_data["termination_policy"])
     if len(missing_termination_params) > 0:
-        Exception.improper_usage("Missing termination parameters: {0}".format(
-            ", ".join(missing_termination_params)))
+        SOException.improper_usage(
+                "Missing termination parameters: {0}".format(
+                    ", ".join(missing_termination_params)))
     node_id = current_app.mongo.store_node_information(node_data)
     if "switch" in node_data.get("driver", "").lower():
         Network().attest_and_revert_switch()
@@ -279,7 +283,7 @@ def check_isolation_params(isolation_policy):
     if isolation_policy["type"] not in ("ifdown", "delflow", "shutdown"):
         msg = "Isolation type should be ifdown, delflow or shutdown"
         LOGGER.info(msg)
-        Exception.\
+        SOException.\
             improper_usage(msg)
     if isolation_policy["type"] == "ifdown":
         if "interface_name" not in isolation_policy:
@@ -305,7 +309,7 @@ def check_auth_params(auth_data):
     if auth_data.get("type", "") not in ("password", "private_key"):
         msg = "Authentication type should be password or private_key"
         LOGGER.info(msg)
-        Exception.\
+        SOException.\
             improper_usage(msg)
     if auth_data["type"] == "password":
         if "password" not in auth_data:

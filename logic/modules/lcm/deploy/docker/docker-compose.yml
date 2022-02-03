@@ -1,7 +1,6 @@
 version: "3.8"
 
 services:
-#  so_${SO_MODL_NAME}:
   so_lcm:
     build:
       # The specific context passed is copied by deploy.sh
@@ -20,7 +19,7 @@ services:
       - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
     healthcheck:
       test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/status
-      interval: 10s
+      interval: 60s
       timeout: 10s
       retries: 5
       start_period: 40s

@@ -28,12 +28,12 @@ class ExceptionCode(Enum):
         return str(self.value)
 
 
-class Exception:
+class SOException:
 
     @staticmethod
     def abort(error_code: int, error_msg: str,
               error_det: str = None) -> HTTPException:
-        response = Exception.inform(error_code, error_msg, error_det)
+        response = SOException.inform(error_code, error_msg, error_det)
         raise HTTPException(response=response)
 
     @staticmethod
@@ -50,42 +50,42 @@ class Exception:
 
     @staticmethod
     def bad_request(error_msg: str = None) -> HttpResponse:
-        return Exception.inform(
+        return SOException.inform(
             HttpCode.BAD_REQUEST,
             ExceptionCode.BAD_REQUEST,
             error_msg)
 
     @staticmethod
     def improper_usage(error_msg: str = None) -> HTTPException:
-        return Exception.abort(
+        return SOException.abort(
             HttpCode.TEAPOT,
             ExceptionCode.IMPROPER_USAGE,
             error_msg)
 
     @staticmethod
     def internal_error(error_msg: str = None) -> HTTPException:
-        return Exception.abort(
+        return SOException.abort(
             HttpCode.INTERNAL_ERROR,
             ExceptionCode.INTERNAL_ERROR,
             error_msg)
 
     @staticmethod
     def invalid_content_type(error_msg: str = None) -> HTTPException:
-        return Exception.abort(
+        return SOException.abort(
             HttpCode.UNSUP_MEDIA,
             ExceptionCode.INVALID_CONTENT_TYPE,
             error_msg)
 
     @staticmethod
     def not_implemented(error_msg: str = None) -> HTTPException:
-        return Exception.abort(
+        return SOException.abort(
             HttpCode.NOT_IMPL,
             ExceptionCode.NOT_IMPLEMENTED,
             error_msg)
 
     @staticmethod
     def not_found(error_msg: str = None) -> HttpResponse:
-        return Exception.inform(
+        return SOException.inform(
             HttpCode.NOT_FOUND,
             ExceptionCode.NOT_FOUND,
             error_msg)

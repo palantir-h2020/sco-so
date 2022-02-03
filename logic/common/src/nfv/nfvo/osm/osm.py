@@ -16,9 +16,9 @@
 # limitations under the License.
 
 from common.config.parser.fullparser import FullConfParser
-from common.core import download
-from common.core.exception import ScoException
-from common.core.log import setup_custom_logger
+# from common.core import download
+from common.exception.exception import SOException
+from common.log.log import setup_custom_logger
 # from common.db.manager import DBManager
 from common.nfv.nfvo.osm.exception import OSMException, OSMPackageConflict,\
     OSMPackageError, OSMPackageNotFound, OSMUnknownPackageType,\
@@ -28,10 +28,10 @@ from io import BytesIO
 from mimetypes import MimeTypes
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from werkzeug.datastructures import FileStorage
-import hashlib
+# import hashlib
 import json
 import os
-import pycurl
+# import pycurl
 import requests
 import shutil
 import tarfile
@@ -397,7 +397,7 @@ class OSM():
             headers=self.headers,
             verify=False)
         if not str(response.status_code).startswith("2"):
-            ScoException.conflict_from_client(
+            SOException.conflict_from_client(
                 "NS instance with id={} does not exist".format(nsr_id))
         requests.delete("{0}".format(inst_url),
                         headers=self.headers,
@@ -481,7 +481,8 @@ class OSM():
             # FIXME
             # Reminder: populate existing config jobs from the model
             # dbm = DBManager()
-            # vnfi.update({"config-jobs": dbm.get_vnf_actions(vnfi["vnfr-id"])})
+            # vnfi.update({"config-jobs":
+            #              dbm.get_vnf_actions(vnfi["vnfr-id"])})
             out_nsi["constituent-vnf-instances"].append(vnfi)
         out_nsi["instance-id"] = nsi["id"]
         out_nsi["instance-name"] = nsi["name"]
@@ -656,40 +657,41 @@ class OSM():
 
     @check_authorization
     def post_package(self, bin_file, url):
-        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-        headers = self.headers
-        headers.update({"Content-Type": "application/gzip"})
-        hash_md5 = hashlib.md5()
-        for chunk in iter(lambda: bin_file.read(4096), b""):
-            hash_md5.update(chunk)
-        md5sum = hash_md5.hexdigest()
-        bin_file.seek(0)
-        full_file = bin_file.read()
-        bin_file.seek(0)
-        headers.update({"Content-File-MD5": md5sum})
-        headers.update({"Content-Length": str(len(full_file))})
-        headers.update({"Expect": "100-continue"})
-        curl_cmd = pycurl.Curl()
-        curl_cmd.setopt(pycurl.URL, url)
-        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
-        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
-        curl_cmd.setopt(pycurl.POST, 1)
-        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
-                          k in headers.keys()]
-        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
-        data = BytesIO()
-        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
-        postdata = bin_file.read()
-        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
-        curl_cmd.perform()
-        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-        if http_code == 500:
-            raise OSMPackageError
-        output = json.loads(data.getvalue().decode())
-        if http_code == 409:
-            raise OSMPackageConflict
-        return {"package": bin_file.filename,
-                "transaction_id": output["id"]}
+        pass
+#        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+#        headers = self.headers
+#        headers.update({"Content-Type": "application/gzip"})
+#        hash_md5 = hashlib.md5()
+#        for chunk in iter(lambda: bin_file.read(4096), b""):
+#            hash_md5.update(chunk)
+#        md5sum = hash_md5.hexdigest()
+#        bin_file.seek(0)
+#        full_file = bin_file.read()
+#        bin_file.seek(0)
+#        headers.update({"Content-File-MD5": md5sum})
+#        headers.update({"Content-Length": str(len(full_file))})
+#        headers.update({"Expect": "100-continue"})
+#        curl_cmd = pycurl.Curl()
+#        curl_cmd.setopt(pycurl.URL, url)
+#        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
+#        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
+#        curl_cmd.setopt(pycurl.POST, 1)
+#        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
+#                          k in headers.keys()]
+#        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
+#        data = BytesIO()
+#        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+#        postdata = bin_file.read()
+#        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
+#        curl_cmd.perform()
+#        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+#        if http_code == 500:
+#            raise OSMPackageError
+#        output = json.loads(data.getvalue().decode())
+#        if http_code == 409:
+#            raise OSMPackageConflict
+#        return {"package": bin_file.filename,
+#                "transaction_id": output["id"]}
 
     def post_vnfd_package(self, bin_file):
         return self.post_package(bin_file, self.vnfd_package_url)
@@ -714,12 +716,13 @@ class OSM():
         return "unknown"
 
     def onboard_package_remote(self, pkg_path):
-        if not os.path.isfile(pkg_path):
-            try:
-                pkg_path = download.fetch_content(pkg_path)
-            except download.DownloadException:
-                raise OSMPackageNotFound
-        return self.onboard_package(pkg_path)
+        pass
+#        if not os.path.isfile(pkg_path):
+#            try:
+#                pkg_path = download.fetch_content(pkg_path)
+#            except download.DownloadException:
+#                raise OSMPackageNotFound
+#        return self.onboard_package(pkg_path)
 
     def onboard_package(self, pkg_path):
         remove_after = False

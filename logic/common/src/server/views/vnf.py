@@ -7,7 +7,7 @@
 
 import json
 
-from common.exception.exception import Exception
+from common.exception.exception import SOException
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response import HttpResponse
@@ -48,12 +48,12 @@ def fetch_running_vnsfs_r4():
 @so_views.route(endpoints.VNSF_VNSF_TENANT, methods=["GET"])
 @so_views.route(endpoints.VNSF_VNSF_TENANT_R2, methods=["GET"])
 def fetch_running_vnsfs_per_tenant(tenant_id):
-    Exception.not_implemented()
+    SOException.not_implemented()
 
 
 @so_views.route(endpoints.VNSF_VNSF_TENANT_R4, methods=["GET"])
 def fetch_running_vnsfs_per_tenant_r4(tenant_id):
-    Exception.not_implemented()
+    SOException.not_implemented()
 
 
 @so_views.route(endpoints.VNSF_ACTION_EXEC, methods=["POST"])
@@ -63,12 +63,12 @@ def exec_primitive_on_vnsf():
     vnf_object = VnsfoVnsf()
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     exp_params = ["vnsf_id", "action", "params"]
     if not content.data_in_request(
             request, exp_params):
-        Exception.improper_usage("Missing parameters: any of {}"
-                                 .format(exp_params))
+        SOException.improper_usage(
+                "Missing parameters: any of {}".format(exp_params))
     # Extract params, respecting the specific ordering
     payload = vnf_object.submit_action_request(
         *[request.json.get(x) for x in exp_params])
@@ -89,12 +89,12 @@ def exec_primitive_on_vnsf_r4():
     vnf_object = VnsfoVnsf(4)
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
-        Exception.invalid_content_type("Expected: {}".format(exp_ct))
+        SOException.invalid_content_type("Expected: {}".format(exp_ct))
     exp_params = ["vnsf_id", "action", "params"]
     if not content.data_in_request(
             request, exp_params):
-        Exception.improper_usage("Missing parameters: any of {}"
-                                 .format(exp_params))
+        SOException.improper_usage(
+                "Missing parameters: any of {}".format(exp_params))
     # Extract params, respecting the specific ordering
     payload = vnf_object.submit_action_request(
         *[request.json.get(x) for x in exp_params])
