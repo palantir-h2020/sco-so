@@ -31,12 +31,14 @@ class ExceptionCode(Enum):
 class Exception:
 
     @staticmethod
-    def abort(error_code: int, error_msg: str, error_det : str = None) -> HTTPException:
+    def abort(error_code: int, error_msg: str,
+              error_det: str = None) -> HTTPException:
         response = Exception.inform(error_code, error_msg, error_det)
         raise HTTPException(response=response)
 
     @staticmethod
-    def inform(error_code: int, error_msg: str, error_det : str = None) -> HttpResponse:
+    def inform(error_code: int, error_msg: str,
+               error_det: str = None) -> HttpResponse:
         error_details = "{0}: {1}".format(error_code, error_msg)
         error = {"error": error_details}
         if error_det is not None:
@@ -47,42 +49,42 @@ class Exception:
         return HttpResponse.json(error_code, error)
 
     @staticmethod
-    def bad_request(error_msg : str = None) -> HttpResponse:
+    def bad_request(error_msg: str = None) -> HttpResponse:
         return Exception.inform(
             HttpCode.BAD_REQUEST,
             ExceptionCode.BAD_REQUEST,
             error_msg)
 
     @staticmethod
-    def improper_usage(error_msg : str = None) -> HTTPException:
+    def improper_usage(error_msg: str = None) -> HTTPException:
         return Exception.abort(
             HttpCode.TEAPOT,
             ExceptionCode.IMPROPER_USAGE,
             error_msg)
 
     @staticmethod
-    def internal_error(error_msg : str = None) -> HTTPException:
+    def internal_error(error_msg: str = None) -> HTTPException:
         return Exception.abort(
             HttpCode.INTERNAL_ERROR,
             ExceptionCode.INTERNAL_ERROR,
             error_msg)
 
     @staticmethod
-    def invalid_content_type(error_msg : str = None) -> HTTPException:
+    def invalid_content_type(error_msg: str = None) -> HTTPException:
         return Exception.abort(
             HttpCode.UNSUP_MEDIA,
             ExceptionCode.INVALID_CONTENT_TYPE,
             error_msg)
 
     @staticmethod
-    def not_implemented(error_msg : str = None) -> HTTPException:
+    def not_implemented(error_msg: str = None) -> HTTPException:
         return Exception.abort(
             HttpCode.NOT_IMPL,
             ExceptionCode.NOT_IMPLEMENTED,
             error_msg)
 
     @staticmethod
-    def not_found(error_msg : str = None) -> HttpResponse:
+    def not_found(error_msg: str = None) -> HttpResponse:
         return Exception.inform(
             HttpCode.NOT_FOUND,
             ExceptionCode.NOT_FOUND,

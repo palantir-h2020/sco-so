@@ -122,10 +122,13 @@ class Server:
             "port": self.port,
             # "reload": False
         }
-        if self.workers > 0:
+        if self.workers > 1:
             server_settings.update({
                 "workers": self.workers
             })
+            raise Exception(
+                "Cannot support multiple server workers. Check " +
+                "cfg/api.yaml and set these in the range: [0,1]")
 
         if self.https_enabled:
             try:

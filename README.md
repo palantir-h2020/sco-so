@@ -21,6 +21,8 @@ Regarding the infrastructure:
 
 ## Development env (venv)
 
+*Note*: in "venv" deployment mode, the port for "dbl" is the default: 27017
+
 ```
 cd deploy
 # Direct access to venv
@@ -52,13 +54,11 @@ The SCO/SO used in PALANTIR is a Security Orchestrator that consists of differen
 | Module |  Port | Docs | Status |
 |:------------:|:-----:|:--------:|:------:|
 | aac          | 50100 | [docs](logic/modules/aac/README.md) |  TBD   |
-| api          | 50101 | [docs](logic/modules/api/README.md) |  TBD   |
+| api          | 50101 | [docs](logic/modules/api/README.md) |  WIP   |
 | atr          | 50102 | [docs](logic/modules/atr/README.md) |  TBD   |
 | cfg          | 50103 | [docs](logic/modules/cfg/README.md) |  TBD   |
 | dbl          | 50104 | N/A |  WIP   |
 | lcm          | 50105 | [docs](logic/modules/lcm/README.md) |  WIP   |
 | mon          | 50106 | [docs](logic/modules/mon/README.md) |  WIP   |
-| pkg          | 50107 | [docs](logic/modules/pkg/README.md) |  TBD   |
+| pkg          | 50107 | [docs](logic/modules/pkg/README.md) |  WIP   |
 | pol          | 50108 | [docs](logic/modules/pol/README.md) |  TBD   |
-
-*Note*: in "venv" deployment mode, the port for "dbl" is the default: 27017

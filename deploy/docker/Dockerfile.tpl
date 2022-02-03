@@ -18,13 +18,13 @@ RUN (mkdir -p ${SO_ROOT}/common || true)
 COPY ./common/src ${SO_ROOT}/common/
 
 # Copy local-related sources for the HTTP server into the common-related sources
-# This is done to place the module's Flask blueprints into the specific
+# This is done to place the server's blueprints into the specific
 # folder in the common sources, acting as a drop-in plug-in
 RUN mkdir -p ${SO_ROOT}/blueprints
 #COPY ./src/server/blueprints/* ${SO_ROOT}/common/src/server/http/blueprints/
-COPY ./src/server/blueprints/* ${SO_ROOT}/blueprints/
+COPY ./src/server/blueprints/ ${SO_ROOT}/blueprints/
 # Copy common-related blueprints sources as well
-COPY ./common/src/server/http/blueprints/* ${SO_ROOT}/blueprints/
+COPY ./common/src/server/http/blueprints/ ${SO_ROOT}/blueprints/
 
 # Copy local module-related configuration for the module
 RUN mkdir -p ${SO_ROOT}/cfg
