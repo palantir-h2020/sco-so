@@ -31,9 +31,6 @@ RUN mkdir -p ${SO_ROOT}/cfg
 COPY ./cfg ${SO_ROOT}/cfg/
 # Copy local deployment-related configuration for the module
 RUN mkdir -p ${SO_ROOT}/deploy/local
-RUN pwd
-RUN ls -lah .
-RUN ls -lah deploy/
 COPY ./local ${SO_ROOT}/deploy/local/
 
 # Install pre-requisites
@@ -59,6 +56,6 @@ RUN ([ -f local/apt ] && (cat local/apt | xargs apt-get install -y)) || true
 COPY run.sh ${SO_ROOT}/
 
 WORKDIR ${SO_ROOT}
-CMD ["python3", "main.py"]
-#CMD ["sleep", "infinity"]
+#CMD ["python3", "main.py"]
+CMD ["sleep", "infinity"]
 #ENTRYPOINT "${SO_ROOT}/run.sh"

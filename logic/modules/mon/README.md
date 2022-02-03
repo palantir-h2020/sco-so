@@ -2,37 +2,32 @@
 
 This module takes care of the monitoring of the virtual network services.
 
-# Installation
-
-```
-
-```
-
 # Deployment
 
-```
-
-```
-
-## venv
+## Development env (venv)
 
 ```
 cd deploy
-./deploy.sh -s mon
-
-*NOTE*: Get the openverso key on its directory /logic/modules/mon/data/key/openverso
+# Specific module deployment
+./venv-deploy.sh -s mon
 ```
+
+## Production env (Docker)
+
+```
+cd deploy
+./docker-deploy.sh -s mon
+```
+
+## Production env (Kubernetes)
+
+NB: this is TODO work
 
 # API
 
 ```
 MODL="mon"
 PORT="50106"
-
-# Run API
-
-$cd sco-so-venv/logic/modules/mon/src
-$python3 main.py
 
 # Common
 
@@ -41,9 +36,9 @@ curl http://127.0.0.1:${PORT}/${MODL}
 
 # Metrics
 
-## VIM metrics
-curl http://127.0.0.1:${PORT}/${MODL}/vim
-curl http://127.0.0.1:${PORT}/${MODL}/vim\?vim-id\=d762daf2-5e62-4bf4-b979-718b8349ed81
+## Infrastructure metrics
+curl http://127.0.0.1:${PORT}/${MODL}/infra
+curl http://127.0.0.1:${PORT}/${MODL}/infra\?id\=d762daf2-5e62-4bf4-b979-718b8349ed81
 
 ## VNF metrics
 curl http://127.0.0.1:${PORT}/${MODL}/vnf

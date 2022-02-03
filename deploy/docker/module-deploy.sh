@@ -52,6 +52,7 @@ fi
 # Copy deployment local-related files (such as common scripts
 # or cfg files) in order to be used
 subc_loc_path="${PWD}/../local"
+mkdir -p ${subc_loc_path}
 if [[ -d ${subc_loc_path} ]]; then
     cp -Rp ${subc_loc_path} .
 fi

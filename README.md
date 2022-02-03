@@ -19,7 +19,7 @@ Regarding the infrastructure:
 
 # Deployment
 
-## venv
+## Development env (venv)
 
 ```
 cd deploy
@@ -29,15 +29,17 @@ source deploy.sh
 ./venv-deploy.sh -s <module>
 ```
 
-## Docker (WIP)
+## Production env (Docker)
 
+NB: this is WIP for some modules
 ```
 cd deploy
 ./docker-deploy.sh -s <module>
 ```
 
-## Kubernetes (WIP)
+## Production env (Kubernetes)
 
+NB: this is TODO work
 ```
 cd deploy
 ./kubernetes-deploy.sh -s <module>

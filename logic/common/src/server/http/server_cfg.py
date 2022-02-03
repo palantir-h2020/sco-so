@@ -19,7 +19,7 @@ API_HOST = "0.0.0.0"
 API_PORT = "50100"
 API_DEBUG = True
 # FIXME: re-enable
-#HTTPS_ENABLED = True
+# HTTPS_ENABLED = True
 HTTPS_ENABLED = False
 API_VERIFY_CLIENT = False
 
@@ -83,6 +83,9 @@ class ServerConfig(object):
         self.verify_users = ast.literal_eval(
                 self.api_sec.get("verify_client_cert")) \
             or API_VERIFY_CLIENT
+        # Performance
+        self.api_perf = self.api_category.get("performance")
+        self.workers = self.api_perf.get("parallel_workers", 0)
         # GUI data
         self.template_folder = os.path.normpath(
             os.path.join(os.path.dirname(__file__),

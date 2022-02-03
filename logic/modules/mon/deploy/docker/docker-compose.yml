@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  so_mon:
+    build:
+      # The specific context passed is copied by deploy.sh
+      # beforehand and picked specifically in Dockerfile
+      context: .
+      dockerfile: Dockerfile
+    container_name: so-${SO_MODL_NAME}
+    # Pass some environment variables to the container (used to
+    # expose information specific to the container in a generic manner)
+    environment:
+      - SO_MODL_NAME
+      - SO_MODL_API_PORT
+    restart: unless-stopped
+    ports:
+      # Bind and expose the server port to the one defined in the .env file
+      - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
+    volumes:
+      # The API in so-mon must be able to modify this file
+      - "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:rw,shared"
+    healthcheck:
+      test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/status
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - so-core
+      - so-db
+  so_mon_prometheus:
+    image: prom/prometheus
+    user: root
+    container_name: so-${SO_MODL_NAME}-prometheus
+    environment:
+      - SO_MODL_NAME
+      - SO_MODL_API_PORT
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - "${PWD}/local/prometheus.yml:/etc/prometheus/prometheus.yml:rw,private"
+      # The Prometheus server just needs to read this file
+      - "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:ro,shared"
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://so-${SO_MODL_NAME}-prometheus:9090/metrics
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - so-core
+
+networks:
+  so-db:
+    driver: bridge
+    external: true
+  so-core:
+    driver: bridge
+    external: true
