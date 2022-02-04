@@ -85,17 +85,13 @@ class YAMLDumper(yaml.Dumper):
 
 def convert_to_json(data) -> dict:
     if isinstance(data, str):
-        print("cj-1a")
         try:
             data = json.loads(data)
-            print("cj-1b")
         except Exception:
             pass
     elif not isinstance(data, dict):
-        print("cj-2a")
         try:
             data = json.dumps(data)
-            print("cj-2b")
         except Exception:
             data = str(data)
     return data
@@ -103,11 +99,9 @@ def convert_to_json(data) -> dict:
 
 def convert_to_yaml(data) -> str:
     if not isinstance(data, str):
-        print("cy-1")
         try:
             data = yaml.dump(data, Dumper=YAMLDumper,
                              default_flow_style=False)
-            print("cy-2")
             print(data)
         except Exception:
             data = str(data)
