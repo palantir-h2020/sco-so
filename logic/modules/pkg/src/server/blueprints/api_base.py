@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -10,10 +10,10 @@ from common.server.http.http_code import HttpCode
 from common.server.http.http_response import HttpResponse
 
 
-so_blueprints = Blueprint("so__api__base", __name__)
+so_blueprints = Blueprint("so__pkg__base", __name__)
 
 
-@so_blueprints.route("/api", methods=["GET"])
+@so_blueprints.route("/pkg", methods=["GET"])
 def base():
-    data = {"name": "api_api"}
+    data = {"name": "pkg_api"}
     return HttpResponse.formatted(data, HttpCode.OK)

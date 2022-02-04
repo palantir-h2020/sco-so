@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -11,7 +11,7 @@ from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response_fastapi import HttpResponse
 from fastapi import APIRouter, Request
-from typing import Union, List, Optional
+from typing import List, Optional, Union
 import requests
 
 

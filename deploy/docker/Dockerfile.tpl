@@ -29,6 +29,11 @@ COPY ./common/src/server/http/blueprints/ ${SO_ROOT}/blueprints/
 # Copy local module-related configuration for the module
 RUN mkdir -p ${SO_ROOT}/cfg
 COPY ./cfg ${SO_ROOT}/cfg/
+
+# Copy keys
+RUN mkdir -p ${SO_ROOT}/keys
+COPY ./keys ${SO_ROOT}/keys/
+
 # Copy local deployment-related configuration for the module
 RUN mkdir -p ${SO_ROOT}/deploy/local
 COPY ./local ${SO_ROOT}/deploy/local/

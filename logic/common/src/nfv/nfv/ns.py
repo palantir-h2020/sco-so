@@ -37,7 +37,7 @@ class VnsfoNs:
             else:
                 self.orchestrator = OSMR10()
         except Exception:
-            raise SOException(
+            raise Exception(
                 "Cannot create instance of OSMR{}".format(release))
 
     def get_nsr_config(self, ns_name=None):

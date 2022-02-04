@@ -23,7 +23,6 @@ import requests
 
 
 class VnsfoVnsf:
-    pass
 
     def __init__(self, release=None):
         try:
@@ -37,11 +36,11 @@ class VnsfoVnsf:
                 "Cannot create instance of OSMR{}".format(release))
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-    def get_vnfr_config(self):
-        return self.orchestrator.get_vnf_descriptors()
+    def get_vnfr_config(self, vnf_name=None):
+        return self.orchestrator.get_vnf_descriptors(vnf_name)
 
-    def get_vnfr_running(self):
-        return self.orchestrator.get_vnf_instances()
+    def get_vnfr_running(self, instance_id=None):
+        return self.orchestrator.get_vnf_instances(instance_id)
 
     def exec_action_on_vnf(self, payload: Dict):
         return self.orchestrator.exec_action_on_vnf(payload)

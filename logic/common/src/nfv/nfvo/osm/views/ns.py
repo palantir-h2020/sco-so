@@ -67,7 +67,7 @@ def instantiate_ns_request_check():
 def instantiate_ns():
     try:
         instantiate_ns_request_check()
-    except SOException as e:
+    except Exception as e:
         print(e)
         return HttpResponse.json(
             e.status_code, e.status_msg)

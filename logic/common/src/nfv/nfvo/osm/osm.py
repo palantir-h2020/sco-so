@@ -70,14 +70,14 @@ class OSM():
 
     def __init__(self):
         self.config = FullConfParser()
-        self.nfvo_category = self.config.get("nfvo.yaml")
+        self.nfvo_category = self.config.get("so.yaml")
         self._read_cfg_osm_nbi(self.nfvo_category.get("osm"))
         self._create_ep_osm()
         self._create_session()
         # FIXME validate which is the best value, add to cfg
         self.monitoring_interval = 1
         self.monitoring_timeout = 60
-        self._read_cfg_vnfs(self.nfvo_category.get("vnfs"))
+        self._read_cfg_vnfs(self.nfvo_category.get("nfs"))
 
     def _read_cfg_osm_nbi(self, cfg_section: str):
         cfg_osm_nbi = cfg_section.get("nbi")
@@ -93,7 +93,7 @@ class OSM():
         self.vnf_user = cfg_vnfs_gen.get("user")
         try:
             curr_path = os.path.dirname(os.path.abspath(__file__))
-            key_path = os.path.join(curr_path, "../../../../../../data/key")
+            key_path = os.path.join(curr_path, "../../../../keys")
             with open("{}/{}".format(
                   key_path, cfg_vnfs_gen.get("key"))) as fhandle:
                 self.vnf_key = fhandle.read()

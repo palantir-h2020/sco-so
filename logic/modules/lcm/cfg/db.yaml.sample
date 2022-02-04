@@ -1,0 +1,11 @@
+general:
+  host: so-dbl
+  port: 27017
+
+db:
+  name: lcm
+  user: so
+  password: so
+  auth_source: admin
+  admin_username: so
+  admin_password: so

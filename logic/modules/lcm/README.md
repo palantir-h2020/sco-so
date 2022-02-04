@@ -38,12 +38,9 @@ curl http://127.0.0.1:${PORT}/${MODL}
 
 ## List running instances
 curl http://127.0.0.1:${PORT}/${MODL}/ns
-curl http://127.0.0.1:${PORT}/${MODL}/ns/<ns_id>
+curl http://127.0.0.1:${PORT}/${MODL}/ns?id=<ns_instance_id>
 
-## (TODO: move to PKG)
-curl http://127.0.0.1:${PORT}/${MODL}/ns?type=available
-
-## Instantiante new instance
+## Instantiate new NS
 curl http://127.0.0.1:${PORT}/${MODL}/ns -X POST -H "Content-Type: application/json" --data '{"ns-name": "<ns_name>", "instance-name": "...", "vim-id": "<vim_id>"}'
 
 curl http://127.0.0.1:${PORT}/${MODL}/ns -X POST -H "Content-Type: application/json" --data '{"ns-name": "hackfest_proxycharm-ns
@@ -53,14 +50,11 @@ curl http://127.0.0.1:${PORT}/${MODL}/ns -X POST -H "Content-Type: application/j
 curl http://127.0.0.1:${PORT}/${MODL}/ns -X POST -H "Content-Type: application/json" --data '{"ns-name": "hackfest_proxycharm-ns", "instance-name": "proxy-test", "vim-id": "b2f0b1b4-52a0-4434-8268-4bccc2e9cbd3"}'
 
 ## Delete running instance
-curl -X DELETE http://127.0.0.1:${PORT}/${MODL}/ns/<ns_id>
+curl -X DELETE http://127.0.0.1:${PORT}/${MODL}/ns/<ns_instance_id>
 
 # VNF
 
 ## List running instances
 curl http://127.0.0.1:${PORT}/${MODL}/vnf
-curl http://127.0.0.1:${PORT}/${MODL}/vnf/<vnf_id>
-
-## (TODO: move to PKG)
-curl http://127.0.0.1:${PORT}/${MODL}/vnf?type=available
+curl http://127.0.0.1:${PORT}/${MODL}/vnf?id=<vnf_instance_id>
 ```

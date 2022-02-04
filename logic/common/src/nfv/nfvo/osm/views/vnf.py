@@ -29,15 +29,17 @@ so_views = Blueprint("so_vnf_views", __name__)
 
 
 @so_views.route(endpoints.VNSF_C_VNSFS, methods=["GET"])
-def fetch_config_vnfs():
+def fetch_config_vnfs(instance_id=None):
     vnf_object = VnsfoVnsf()
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_config())
+    return HttpResponse.json(
+        HttpCode.OK, vnf_object.get_vnfr_config(instance_id))
 
 
 @so_views.route(endpoints.VNSF_R_VNSFS, methods=["GET"])
-def fetch_running_vnfs():
+def fetch_running_vnfs(instance_id=None):
     vnf_object = VnsfoVnsf()
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_running())
+    return HttpResponse.json(
+        HttpCode.OK, vnf_object.get_vnfr_running(instance_id))
 
 
 @so_views.route(endpoints.VNSF_VNSF_TENANT, methods=["GET"])

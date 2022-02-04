@@ -49,6 +49,13 @@ if [[ -d ${subc_cfg_path} ]]; then
     done
 fi
 
+# Copy keys
+common_keys_path="${PWD}/../../../../../keys"
+mkdir -p ${PWD}/keys
+if [[ -d ${common_keys_path} ]]; then
+    cp -Rp ${common_keys_path}/* ${PWD}/keys/
+fi
+
 # Copy deployment local-related files (such as common scripts
 # or cfg files) in order to be used
 subc_loc_path="${PWD}/../local"

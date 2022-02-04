@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  so_pkg:
+    build:
+      # The specific context passed is copied by deploy.sh
+      # beforehand and picked specifically in Dockerfile
+      context: .
+      dockerfile: Dockerfile
+    container_name: so-${SO_MODL_NAME}
+    # Pass some environment variables to the container (used to
+    # expose information specific to the container in a generic manner)
+    environment:
+      - SO_MODL_NAME
+      - SO_MODL_API_PORT
+    restart: unless-stopped
+    ports:
+      # Bind and expose the server port to the one defined in the .env file
+      - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
+    healthcheck:
+      test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/status
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - so-core
+      - so-db
+
+networks:
+  so-db:
+    driver: bridge
+    external: true
+  so-core:
+    driver: bridge
+    external: true
