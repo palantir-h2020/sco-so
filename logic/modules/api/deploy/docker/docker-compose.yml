@@ -20,12 +20,12 @@ services:
     #volumes:
     #  # The API in so-mon must be able to modify this file
     #  - "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:rw,shared"
-    #healthcheck:
-    #  test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/status
-    #  interval: 60s
-    #  timeout: 10s
-    #  retries: 5
-    #  start_period: 40s
+    healthcheck:
+      test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
     networks:
       - so-core
       - so-db

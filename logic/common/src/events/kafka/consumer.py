@@ -35,7 +35,7 @@ class SOConsumer():
                 enable_auto_commit=True)
         # value_deserializer=lambda x: json.loads(x.decode("utf-8")))
 
-    def listen(self):
+    def read_wait(self):
         for msg in self.consumer:
             print(msg)
             # TODO test either return or yield
