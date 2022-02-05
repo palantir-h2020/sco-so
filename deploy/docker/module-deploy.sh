@@ -24,29 +24,35 @@ if [[ -d ${common_logic_path} ]]; then
 fi
 
 # Copy module-related dependencies and sources to the module's context
-subc_reqs_path="${PWD}/../reqs"
+modl_reqs_path="${PWD}/../reqs"
 mkdir -p ${PWD}/reqs/local
-if [[ -d ${subc_reqs_path} ]]; then
-    if [[ $(ls ${subc_reqs_path} | wc -l) -gt 0 ]]; then
-        cp -Rp ${subc_reqs_path}/* ${PWD}/reqs/local/
+if [[ -d ${modl_reqs_path} ]]; then
+    if [[ $(ls ${modl_reqs_path} | wc -l) -gt 0 ]]; then
+        cp -Rp ${modl_reqs_path}/* ${PWD}/reqs/local/
     fi
 fi
-subc_logic_path="${PWD}/../../src"
-if [[ -d ${subc_logic_path} ]]; then
-    cp -Rp ${subc_logic_path} .
+modl_logic_path="${PWD}/../../src"
+if [[ -d ${modl_logic_path} ]]; then
+    cp -Rp ${modl_logic_path} .
 fi
 
-# Copy local-related configuration for the module
-# and use sample configuration files when needed
-subc_cfg_path="${PWD}/../../cfg"
-if [[ -d ${subc_cfg_path} ]]; then
-    cp -Rp ${subc_cfg_path} .
-    for cfg_file in $(ls ${PWD}/cfg/*); do
-        cfg_file_nosample="${cfg_file/.sample/}"
-        if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
-            mv $cfg_file $cfg_file_nosample
-        fi
-    done
+# Copy common configuration first
+gen_cfg_path="${PWD}/../../../../../cfg"
+modl_cfg_path="${PWD}/../../cfg"
+if [[ -d ${gen_cfg_path} ]]; then
+  if [[ ! -d ${modl_cfg_path} ]]; then
+    mkdir -p ${modl_cfg_path}
+  fi
+  cp -Rp ${gen_cfg_path} .
+  # Then, copy local-related configuration for the
+  # module and use sample config files when needed
+  cp -Rp ${modl_cfg_path}/* cfg/
+  for cfg_file in $(ls ${PWD}/cfg/*); do
+      cfg_file_nosample="${cfg_file/.sample/}"
+      if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
+          mv $cfg_file $cfg_file_nosample
+      fi
+  done
 fi
 
 # Copy keys
@@ -58,10 +64,10 @@ fi
 
 # Copy deployment local-related files (such as common scripts
 # or cfg files) in order to be used
-subc_loc_path="${PWD}/../local"
-mkdir -p ${subc_loc_path}
-if [[ -d ${subc_loc_path} ]]; then
-    cp -Rp ${subc_loc_path} .
+modl_loc_path="${PWD}/../local"
+mkdir -p ${modl_loc_path}
+if [[ -d ${modl_loc_path} ]]; then
+    cp -Rp ${modl_loc_path} .
 fi
 
 # Deployment upon generation/build of images

@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from common.db.models.infra.node import Node as NodeModel
+# from common.db.models.infra.node import Node as NodeModel
 from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from common.nfv.nfvo.osm.exception import OSMFailedInstantiation
@@ -165,10 +165,11 @@ class VnsfoNs:
 
     # @content.on_mock(ns_m().delete_nsr_mock)
     def delete_ns(self, instance_id):
-        nodes = NodeModel.objects(instance_id=instance_id)
-        for node in nodes:
-            LOGGER.info(node.host_name)
-            node.delete()
+        # TODO: recover this information in the orchestrator's DB?
+        # nodes = NodeModel.objects(instance_id=instance_id)
+        # for node in nodes:
+        #     LOGGER.info(node.host_name)
+        #     node.delete()
         return self.orchestrator.delete_ns_instance(instance_id)
 
     def fetch_config_nss(self):

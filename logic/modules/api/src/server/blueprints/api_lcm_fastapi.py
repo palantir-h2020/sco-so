@@ -30,14 +30,17 @@ ep_base = "http://so-lcm:50105/lcm"
 #             status_code=HttpCode.OK)
 @router.get("/ns", status_code=HttpCode.OK)
 def ns_inst_list(request: Request,
-                 id: Optional[str] = "", name: Optional[str] = ""):
+                 id: Optional[str] = None):
     """
     Details on NS running instances.
     """
     content_type = "application/json"
     if "content-type" in request.headers:
         content_type = request.headers.get("content-type")
-    ns_inst_output = requests.get("{}/ns".format(ep_base))
+    requests_ep = "{}/ns".format(ep_base)
+    if id is not None:
+        requests_ep = "{}?id={}".format(requests_ep, id)
+    ns_inst_output = requests.get(requests_ep)
     try:
         result = ns_inst_output.json()
         return content.convert_to_ct(result, content_type)
@@ -46,16 +49,36 @@ def ns_inst_list(request: Request,
                                   request.headers, HttpCode.INTERNAL_ERROR)
 
 
+# FIXME: check output returned from LCM
+# ValueError: [TypeError("'property' object is not iterable"),
+# TypeError('vars() argument must have __dict__ attribute')]
+# {"action":"delete","instance-id":"ea9df2f9-edca-4f38-9c1b-8038451244d3","result":"success"}
+@router.delete("/ns", status_code=HttpCode.ACCEPTED)
+def ns_inst_delete(request: Request, id: str):
+    """
+    Delete running NS instance.
+    """
+    try:
+        requests_ep = "{}/ns/{}".format(ep_base, id)
+        return requests.delete(requests_ep)
+    except Exception as e:
+        return HttpResponse.infer({"output": str(e)},
+                                  request.headers, HttpCode.INTERNAL_ERROR)
+
+
 @router.get("/vnf", status_code=HttpCode.OK)
 def vnf_inst_list(request: Request,
-                  id: Optional[str] = "", name: Optional[str] = ""):
+                  id: Optional[str] = None):
     """
-    Details on NF running instances.
+    Details on VNF running instances.
     """
     content_type = "application/json"
     if "content-type" in request.headers:
         content_type = request.headers.get("content-type")
-    vnf_inst_output = requests.get("{}/vnf".format(ep_base))
+    requests_ep = "{}/vnf".format(ep_base)
+    if id is not None:
+        requests_ep = "{}?id={}".format(requests_ep, id)
+    vnf_inst_output = requests.get(requests_ep)
     try:
         result = vnf_inst_output.json()
         return content.convert_to_ct(result, content_type)

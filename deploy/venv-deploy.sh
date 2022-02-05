@@ -58,9 +58,12 @@ function copy_replace_files() {
         fi
     fi
 
+    # Copy the common configuration, then the internal one
+    cp -Rp ${module}/../../../cfg ${modl_deploy_path}/
+    cp -Rp ${module}/cfg/* ${modl_deploy_path}/cfg/
+
     # Copy the internal module's logic, then the common logic
     cp -Rp ${module}/src/* ${modl_deploy_path}/
-    cp -Rp ${module}/cfg ${modl_deploy_path}/
     cd ${modl_deploy_path}
     for cfg_file in $(ls ${PWD}/cfg/*); do
         cfg_file_nosample="${cfg_file/.sample/}"

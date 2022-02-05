@@ -83,8 +83,6 @@ def instantiate_ns():
 @so_views.route(endpoints.NS_R_NSS, methods=["GET"])
 @so_views.route(endpoints.NS_R_NSS_ID, methods=["GET"])
 def fetch_running_nss(instance_id=None):
-    # FIXME
-    instance_id = None
     ns_object = VnsfoNs()
     nss = ns_object.get_nsr_running(instance_id)
     return HttpResponse.json(HttpCode.OK, nss)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -15,6 +15,7 @@ from werkzeug.exceptions import HTTPException
 class ExceptionCode(Enum):
 
     BAD_REQUEST = "Bad request"
+    CONFLICT = "Conflict"
     IMPROPER_USAGE = "Improper usage"
     INTERNAL_ERROR = "Internal server error"
     INVALID_CONTENT_TYPE = "Invalid Content-Type"
@@ -28,7 +29,7 @@ class ExceptionCode(Enum):
         return str(self.value)
 
 
-class SOException:
+class SOException(Exception):
 
     @staticmethod
     def abort(error_code: int, error_msg: str,
@@ -53,6 +54,13 @@ class SOException:
         return SOException.inform(
             HttpCode.BAD_REQUEST,
             ExceptionCode.BAD_REQUEST,
+            error_msg)
+
+    @staticmethod
+    def conflict_from_client(error_msg: str = None) -> HTTPException:
+        return SOException.abort(
+            HttpCode.CONFLICT,
+            ExceptionCode.CONFLICT,
             error_msg)
 
     @staticmethod
