@@ -97,3 +97,12 @@ class SOException(Exception):
             HttpCode.NOT_FOUND,
             ExceptionCode.NOT_FOUND,
             error_msg)
+
+    @staticmethod
+    def config_parsing_error(error_msg: str = None):
+        raise SOException("Bad configuration. {}".format(error_msg))
+
+
+class SOConfigException(Exception):
+    def __init__(self, message):
+        super().__init__("Configuration issue. {}".format(message))

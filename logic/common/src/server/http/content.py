@@ -86,26 +86,31 @@ class YAMLDumper(yaml.Dumper):
 def convert_to_json(data) -> dict:
     if isinstance(data, str):
         try:
+            data = data.decode("ascii")
+        except Exception:
+            if data.startswith("b'") or data.startswith('b"'):
+                data = data[1:]
+        try:
+            # Replace strings in the form "'{\"k\":\"v\"}'"
+            data = data.replace("'", "")
+            data = data.replace("\n", "")
+            data = data.replace("\\n", "")
             data = json.loads(data)
         except Exception:
             pass
-    elif not isinstance(data, dict):
-        try:
-            data = json.dumps(data)
-        except Exception:
-            data = str(data)
+    # return json.dumps(data)
     return data
 
 
 def convert_to_yaml(data) -> str:
-    if not isinstance(data, str):
+    if isinstance(data, str):
+        data = convert_to_json(data)
+    if isinstance(data, dict):
         try:
             data = yaml.dump(data, Dumper=YAMLDumper,
                              default_flow_style=False)
-            print(data)
         except Exception:
             data = str(data)
-    return data
 
 
 def convert_to_ct(data, content_type: str):

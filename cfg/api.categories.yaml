@@ -2,9 +2,12 @@ categories:
   lcm:
     title: "Life-cycle management"
     description: "Life-cycle operations on services, including their instantiation"
+    port: 50105
   mon:
     title: "Monitoring"
     description: "Monitoring of both common Linux metrics and personalised ones"
+    port: 50106
   pkg:
     title: "Packages"
     description: "Handling of packages, prior to their instantiation as services"
+    port: 50107

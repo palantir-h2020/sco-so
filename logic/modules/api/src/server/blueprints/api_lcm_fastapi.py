@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2021-present i2CAT
+# Copyright 2022-present i2CAT
 # All rights reserved
 
 
 # from blueprints.schemas.mon_infra import \
 #      MonitoringInfrastructure as MonInfraSchema
+from common.config.api.api_categories import APICategories
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response_fastapi import HttpResponse
@@ -17,9 +18,17 @@ import requests
 
 
 router = APIRouter()
-# FIXME: fetch MODL_NAME and MODL_API_PORT
-# from configuration files
-ep_base = "http://so-lcm:50105/lcm"
+api_c = APICategories().categories()
+ep_base = "http://so-{0}:{1}/{0}".format(
+        "lcm", api_c.get("lcm", {}).get("port", ""))
+
+
+def get_response_out(result, content_type: str):
+    try:
+        result = result.json()
+    except Exception:
+        result = result.text
+    return content.convert_to_ct(result, content_type)
 
 
 # TODO: enforce returned models
@@ -40,27 +49,29 @@ def ns_inst_list(request: Request,
     requests_ep = "{}/ns".format(ep_base)
     if id is not None:
         requests_ep = "{}?id={}".format(requests_ep, id)
-    ns_inst_output = requests.get(requests_ep)
+    result = requests.get(requests_ep)
     try:
-        result = ns_inst_output.json()
-        return content.convert_to_ct(result, content_type)
+        result = get_response_out(result, content_type)
+        return HttpResponse.infer(result)
     except Exception as e:
         return HttpResponse.infer({"output": str(e)},
                                   request.headers, HttpCode.INTERNAL_ERROR)
 
 
-# FIXME: check output returned from LCM
-# ValueError: [TypeError("'property' object is not iterable"),
-# TypeError('vars() argument must have __dict__ attribute')]
-# {"action":"delete","instance-id":"ea9df2f9-edca-4f38-9c1b-8038451244d3","result":"success"}
 @router.delete("/ns", status_code=HttpCode.ACCEPTED)
 def ns_inst_delete(request: Request, id: str):
     """
     Delete running NS instance.
     """
+    content_type = "application/json"
+    if "content-type" in request.headers:
+        content_type = request.headers.get("content-type")
+    requests_ep = "{}/ns/{}".format(ep_base, id)
+    result = requests.delete(requests_ep)
     try:
-        requests_ep = "{}/ns/{}".format(ep_base, id)
-        return requests.delete(requests_ep)
+        result = get_response_out(result, content_type)
+        return HttpResponse.infer(result)
+        # return content.convert_to_ct(data, content_type)
     except Exception as e:
         return HttpResponse.infer({"output": str(e)},
                                   request.headers, HttpCode.INTERNAL_ERROR)
@@ -78,10 +89,10 @@ def vnf_inst_list(request: Request,
     requests_ep = "{}/vnf".format(ep_base)
     if id is not None:
         requests_ep = "{}?id={}".format(requests_ep, id)
-    vnf_inst_output = requests.get(requests_ep)
+    result = requests.get(requests_ep)
     try:
-        result = vnf_inst_output.json()
-        return content.convert_to_ct(result, content_type)
+        result = get_response_out(result, content_type)
+        return HttpResponse.infer(result)
     except Exception as e:
         return HttpResponse.infer({"output": str(e)},
                                   request.headers, HttpCode.INTERNAL_ERROR)

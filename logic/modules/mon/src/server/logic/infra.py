@@ -29,8 +29,8 @@ class Infra(object):
             common_path = FileHandling.extract_common_path(
                 os.path.abspath(__file__),
                 os.path.normpath(k8s_cfg_file),
-                # "server")
-                "blueprints")
+                "server")
+#                "blueprints")
             k8s_cfg_file = os.path.normpath(
                             os.path.join(common_path, k8s_cfg_file))
             if os.path.isfile(k8s_cfg_file):

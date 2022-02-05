@@ -1,9 +1,9 @@
-.sco-so-mon-deployment: &sco-so-mon-deployment
-  - cd deploy && ./docker-deploy.sh -s mon
+.sco-so-api-deployment: &sco-so-api-deployment
+  - cd deploy && ./docker-deploy.sh -s api
 
-sco-so-mon-check-status:
+sco-so-api-check-status:
   before_script:
-    - *sco-so-mon-deployment
+    - *sco-so-api-deployment
   script:
-    - curl -Is http://127.0.0.1:50105/status | head -n 1
-  tags: [sco-so-mon]
+    - curl -Is http://127.0.0.1:50101/api/docs | head -n 1
+  tags: [sco-so-api]

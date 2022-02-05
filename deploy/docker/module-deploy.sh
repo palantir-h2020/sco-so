@@ -10,6 +10,27 @@ build_only=$1
 
 docker_image_prefix="sco_so"
 
+#
+# deploy-opts.sh
+#
+function text_with_colour() {
+    colour="$1"
+    message="${@:2}"
+    nocolour="\033[0m"
+    printf "${colour}${message}${nocolour}\n"
+}
+
+function text_error() {
+    message=$@
+    text_with_colour "\033[1;31m" "${message}"
+}
+
+function error_exit() {
+    text_error $@
+    exit 1
+}
+
+
 # Copy utils-related dependencies and sources to the module's context
 common_reqs_path="${PWD}/../../../../common/deploy/reqs"
 mkdir -p ${PWD}/reqs/common
@@ -43,6 +64,12 @@ if [[ -d ${gen_cfg_path} ]]; then
   if [[ ! -d ${modl_cfg_path} ]]; then
     mkdir -p ${modl_cfg_path}
   fi
+  for cfg_file in $(ls ${gen_cfg_path}/*); do
+      cfg_file_nosample="${cfg_file/.sample/}"
+      if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
+        error_exit "Configuration file \"$(realpath ${cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${cfg_file_nosample})\" and adjust the values"
+      fi
+  done
   cp -Rp ${gen_cfg_path} .
   # Then, copy local-related configuration for the
   # module and use sample config files when needed

@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-# Copyright 2021-present i2CAT
+# Copyright 2022-present i2CAT
 # All rights reserved
 
 
 from blueprints.schemas.mon_infra import \
      MonitoringInfrastructure as MonInfraSchema
+from common.config.api.api_categories import APICategories
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response_fastapi import HttpResponse
@@ -16,9 +17,17 @@ import requests
 
 
 router = APIRouter()
-# FIXME: fetch MODL_NAME and MODL_API_PORT
-# from configuration files
-ep_base = "http://so-mon:50106/mon"
+api_c = APICategories().categories()
+ep_base = "http://so-{0}:{1}/{0}".format(
+        "mon", api_c.get("mon", {}).get("port", ""))
+
+
+def get_response_out(result, content_type: str):
+    try:
+        result = result.json()
+    except Exception:
+        result = result.text
+    return content.convert_to_ct(result, content_type)
 
 
 # When response_model is set, pydantic is enforced. However, enforcing
@@ -27,17 +36,23 @@ ep_base = "http://so-mon:50106/mon"
 @router.get("/infra", response_model=Union[List[MonInfraSchema], str],
             status_code=HttpCode.OK)
 def infra_list(request: Request,
-               id: Optional[str] = "", name: Optional[str] = ""):
+               id: Optional[str] = None, name: Optional[str] = None):
     """
     Details on infrastructure nodes.
     """
     content_type = "application/json"
     if "content-type" in request.headers:
         content_type = request.headers.get("content-type")
-    infra_list_output = requests.get("{}/infra".format(ep_base))
+
+    requests_ep = "{}/infra".format(ep_base)
+    if id is not None:
+        requests_ep = "{}?id={}".format(requests_ep, id)
+    elif name is not None:
+        requests_ep = "{}?name={}".format(requests_ep, id)
+    result = requests.get(requests_ep)
     try:
-        result = infra_list_output.json()
-        return content.convert_to_ct(result, content_type)
+        result = get_response_out(result, content_type)
+        return HttpResponse.infer(result)
     except Exception as e:
         return HttpResponse.infer({"output": str(e)},
                                   request.headers, HttpCode.INTERNAL_ERROR)
