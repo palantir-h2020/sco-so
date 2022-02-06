@@ -16,7 +16,7 @@ class Infra(object):
 
     def __init__(self):
         self.config = FullConfParser()
-        self.mon_category = self.config.get("mon.yaml")
+        self.mon_category = self.config.get("infra.yaml")
         self.infra_category = self.mon_category.get("infrastructure")
         self.infrastructures = []
         for infra_name, infra_cfg in self.infra_category.items():
