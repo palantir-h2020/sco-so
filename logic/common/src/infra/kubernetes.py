@@ -9,10 +9,14 @@ import os
 import sys
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../..")))
-from common.exception.exception import SOException
+from common.exception.exception import SOException, SOConfigException
 from common.log.log import setup_custom_logger
+from common.utils.file_handling import FileHandling
 from kubernetes import client as k8s_client, config as k8s_config
+from kubernetes.config.config_exception import ConfigException as\
+    K8sConfigException
 import math
+import yaml
 
 LOGGER = setup_custom_logger(__name__)
 
@@ -22,10 +26,28 @@ class SOKubernetes():
     Client for Kubernetes clusters.
     """
 
-    def __init__(self, k8sconfig: str = None):
+    def __init__(self, k8sconfig_path: str):
         self.cfg = k8s_config
-        self.cfg.load_kube_config_from_dict(k8sconfig)
+        self._load_kubeconfig(k8sconfig_path)
         self.k8s_api_v1 = k8s_client.CoreV1Api()
+
+    def _load_kubeconfig(self, k8sconfig_path: str):
+        print(k8sconfig_path)
+        common_path = FileHandling.extract_common_path(
+            os.path.abspath(__file__),
+            os.path.normpath(k8sconfig_path),
+            "infra")
+        k8s_cfg_file = os.path.normpath(
+                       os.path.join(common_path, k8sconfig_path))
+        print(k8s_cfg_file)
+        self.kubeconfig = None
+        if os.path.isfile(k8s_cfg_file):
+            k8s_cfg_ct = open(k8s_cfg_file, "r")
+            self.kubeconfig = yaml.safe_load(k8s_cfg_ct)
+        try:
+            self.cfg.load_kube_config_from_dict(self.kubeconfig)
+        except K8sConfigException:
+            raise SOConfigException("Missing file: {}".format(k8s_cfg_file))
 
     def nodes_describe(self, infra_id: str) -> dict():
         # Parameters defined under /usr/local/lib/python3.8/

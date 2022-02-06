@@ -8,6 +8,10 @@ The SO subcomponent takes care of the onboarding of the Network Security Functio
 
 All dependencies will be installed with the deployment scripts.
 
+Regarding configuration:
+- Before deployment you must Verify and adjust your custom configuration in all sample files under the ./cfg folder. To do so, first copy the ".yaml.sample" file into a ".yaml" file; then fill in with the proper data for your environment.
+- There are some modules that may require extra configuration under their specific folder, i.e., under ./logic/module/<module>/cfg
+
 Regarding the infrastructure:
 
 - A Docker registry can be optionally provided in the infrastructure.
@@ -21,7 +25,8 @@ Regarding the infrastructure:
 
 ## Development env (venv)
 
-*Note*: in "venv" deployment mode, the port for "dbl" is the default: 27017
+*Note 1*: not up-to-date. Thus, it may not be fully working
+*Note 2*: in "venv" deployment mode, the port for "dbl" is the default: 27017
 
 ```
 cd deploy

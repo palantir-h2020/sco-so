@@ -5,11 +5,11 @@
 # All rights reserved
 
 
-import logging as log
+# import logging as log
 import os
 import sys
 
-logger = log.getLogger("config-parser")
+# logger = log.getLogger("config-parser")
 
 
 class BaseParser:
@@ -33,10 +33,11 @@ class BaseParser:
         @return value for desired key
         """
         value = self.__dict__.get(key, None)
-        if any(map(lambda x: key.endswith(x), [".ini", ".json", ".yaml", ".yml"])) \
+        if any(map(
+            lambda x: key.endswith(x), [".ini", ".json", ".yaml", ".yml"])) \
                 and not value:
             exc_det = "Error retrieving configuration. Missing " + \
                 "file {}/{}".format(self.path, key)
-            logger.critical(exc_det)
+            # logger.critical(exc_det)
             sys.exit(exc_det)
         return value

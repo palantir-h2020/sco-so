@@ -8,6 +8,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: so-${SO_MODL_NAME}
+    hostname: ${SO_MODL_NAME}
     # Pass some environment variables to the container (used to
     # expose information specific to the container in a generic manner)
     environment:

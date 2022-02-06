@@ -6,10 +6,7 @@
 
 from common.config.parser.fullparser import FullConfParser
 from common.infra.kubernetes import SOKubernetes
-from common.utils.file_handling import FileHandling
 from flask import make_response
-import os
-import yaml
 
 
 class Infra(object):
@@ -26,20 +23,9 @@ class Infra(object):
             infra_dict.update(infra_cfg)
         try:
             k8s_cfg_file = infra_cfg.get("config", {}).get("file", "")
-            common_path = FileHandling.extract_common_path(
-                os.path.abspath(__file__),
-                os.path.normpath(k8s_cfg_file),
-                "server")
-#                "blueprints")
-            k8s_cfg_file = os.path.normpath(
-                            os.path.join(common_path, k8s_cfg_file))
-            if os.path.isfile(k8s_cfg_file):
-                k8s_cfg_ct = open(k8s_cfg_file, "r")
-                kubeconfig_json = yaml.safe_load(k8s_cfg_ct)
-                infra_dict.get("config", {})["data"] = kubeconfig_json
+            self.k8s_client = SOKubernetes(k8s_cfg_file)
+            infra_dict.get("config", {})["data"] = self.k8s_client.kubeconfig
             self.infrastructures.append(infra_dict)
-            self.k8s_client = SOKubernetes(
-                infra_dict.get("config", {}).get("data"))
         except ConnectionRefusedError as e:
             return make_response(
                 "Infrastructure with infra_name: {} may not be \

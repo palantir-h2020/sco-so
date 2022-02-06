@@ -3,7 +3,8 @@ version: "3.8"
 services:
   so_db:
     image: mongo
-    container_name: so-db
+    container_name: ${SO_MODL_NAME}
+    hostname: ${SO_MODL_NAME}
     restart: unless-stopped
     #environment:
     #  - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
