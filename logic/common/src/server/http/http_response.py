@@ -9,7 +9,7 @@ from common.server.http.content import AllowedContentTypes
 from common.server.http.content import error_on_unallowed_method
 from common.server.http.http_code import HttpCode
 from flask import jsonify
-from flask import request
+# from flask import request
 from flask import Response
 
 import json
@@ -67,11 +67,11 @@ class HttpResponse:
                         headers=headers)
 
     @staticmethod
-    def formatted(data, status: int = HttpCode.OK):
+    def infer(data, status: int = HttpCode.OK,
+              ct_accept: str = None) -> Response:
         """
         Format data to be output, based on the expected content_type.
         """
-        ct_accept = request.environ.get("HTTP_ACCEPT")
         if ct_accept is None or ct_accept == "*/*":
             ct_accept = AllowedContentTypes.CONTENT_TYPE_JSON.value
         expected_ct = [
@@ -85,5 +85,4 @@ class HttpResponse:
         output = json.dumps(data)
         if "yaml" in ct_accept:
             output = yaml.dump(data, allow_unicode=True)
-        resp = Response(output, status=status, mimetype=ct_accept)
-        return resp
+        return Response(output, status=status, mimetype=ct_accept)

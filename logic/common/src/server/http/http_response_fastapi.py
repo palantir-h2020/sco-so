@@ -9,7 +9,11 @@ from fastapi import Response
 from fastapi.responses import \
     JSONResponse, PlainTextResponse
 from common.server.http import content
+from common.server.http.content import AllowedContentTypes
+from common.server.http.content import error_on_unallowed_method
 from common.server.http.http_code import HttpCode
+import json
+import yaml
 
 
 class HttpResponse:
@@ -41,23 +45,24 @@ class HttpResponse:
                         media_type=ct)
 
     @staticmethod
-    def infer(data, headers: dict = {},
-              status_code: int = HttpCode.OK) -> Response:
+    def infer(data, status: int = HttpCode.OK,
+              ct_accept: str = None) -> Response:
         """
         Format data to be output, based on the expected content_type.
         """
-        try:
-            return HttpResponse.yaml(status_code, data)
-        except Exception:
-            pass
-        try:
-            return HttpResponse.json(status_code, data)
-        except Exception:
-            pass
-        try:
-            return HttpResponse.text(status_code, data)
-        except Exception:
-            pass
-        return Response(content=data, status_code=status_code,
+        if ct_accept is None or ct_accept == "*/*":
+            ct_accept = AllowedContentTypes.CONTENT_TYPE_JSON.value
+        expected_ct = [
+                AllowedContentTypes.CONTENT_TYPE_JSON.value,
+                AllowedContentTypes.CONTENT_TYPE_YAML.value]
+        content_type_is_expected = any([ct for ct in map(
+            lambda x: ct_accept in x, expected_ct)])
+        if not content_type_is_expected:
+            return error_on_unallowed_method("Content-Type not expected")
+        # Output will be JSON by default
+        output = json.dumps(data)
+        if "yaml" in ct_accept:
+            output = yaml.dump(data, allow_unicode=True)
+        return Response(content=output, status_code=status,
                         media_type=content.AllowedContentTypes.
-                        CONTENT_TYPE_TEXT)
+                        CONTENT_TYPE_TEXT.value)

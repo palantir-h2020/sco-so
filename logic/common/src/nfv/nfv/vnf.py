@@ -36,8 +36,18 @@ class VnsfoVnsf:
                 "Cannot create instance of OSMR{}".format(release))
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+    # Packages
+
     def get_vnfr_config(self, vnf_name=None):
         return self.orchestrator.get_vnf_descriptors(vnf_name)
+
+    def onboard_package(self, vnf_pkg_file):
+        return self.orchestrator.upload_vnfd_package(vnf_pkg_file)
+
+    def delete_package(self, vnf_name=None):
+        return self.orchestrator.delete_package(vnf_name)
+
+    # Running instances
 
     def get_vnfr_running(self, instance_id=None):
         return self.orchestrator.get_vnf_instances(instance_id)

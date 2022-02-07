@@ -25,27 +25,34 @@ from common.server.http.http_response import HttpResponse
 # from common.nfv.nfvo.osm.views.infra import check_auth_params
 from flask import Blueprint
 from flask import request
-import configparser
 
 CONFIG_PATH = "../"
 LOGGER = setup_custom_logger(__name__)
 so_views = Blueprint("so_ns_views", __name__)
+ns_object = VnsfoNs()
 
+
+# Packages
 
 @so_views.route(endpoints.NS_C_NSS, methods=["GET"])
 def fetch_config_nss(instance_id=None):
-    instance_id = None
-    ns_object = VnsfoNs()
     return HttpResponse.json(
         HttpCode.OK, ns_object.get_nsr_config(instance_id))
 
 
-def get_attack_ns_mapping(attack_type):
-    config = configparser.ConfigParser()
-    config.read("{0}cfg/attacks.yaml".format(CONFIG_PATH))
-    ns_mapped = config["general"].get(attack_type, "default").lower()
-    return ns_mapped
+@so_views.route(endpoints.NS_C_NSS, methods=["POST"])
+def upload_config_nss(ns_pkg_file):
+    return HttpResponse.json(
+        HttpCode.ACCEPTED, ns_object.onboard_package(ns_pkg_file))
 
+
+@so_views.route(endpoints.NS_C_NSS, methods=["DELETE"])
+def delete_config_nss(instance_id=None):
+    return HttpResponse.json(
+        HttpCode.ACCEPTED, ns_object.delete_package(instance_id))
+
+
+# Running instances
 
 def instantiate_ns_request_check():
     exp_ct = "application/json"
@@ -68,10 +75,8 @@ def instantiate_ns():
     try:
         instantiate_ns_request_check()
     except Exception as e:
-        print(e)
         return HttpResponse.json(
             e.status_code, e.status_msg)
-    ns_object = VnsfoNs()
     result = ns_object.instantiate_ns(request.json)
     if result.get("result", "") == "success":
         return HttpResponse.json(HttpCode.OK, result)
@@ -83,7 +88,6 @@ def instantiate_ns():
 @so_views.route(endpoints.NS_R_NSS, methods=["GET"])
 @so_views.route(endpoints.NS_R_NSS_ID, methods=["GET"])
 def fetch_running_nss(instance_id=None):
-    ns_object = VnsfoNs()
     nss = ns_object.get_nsr_running(instance_id)
     return HttpResponse.json(HttpCode.OK, nss)
 
@@ -91,7 +95,6 @@ def fetch_running_nss(instance_id=None):
 @so_views.route(endpoints.NS_R_NSS)
 @so_views.route(endpoints.NS_R_NSS_ID, methods=["DELETE"])
 def delete_ns(instance_id=None):
-    ns_object = VnsfoNs()
     result = ns_object.delete_ns(instance_id)
     if result.get("result", "") == "success":
         return HttpResponse.json(HttpCode.OK, result)

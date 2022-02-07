@@ -19,6 +19,7 @@ from common.config.parser.fullparser import FullConfParser
 # from common.core import download
 from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
+from common.utils.osm_response_parsing import OSMResponseParsing
 # from common.db.manager import DBManager
 from common.nfv.nfvo.osm.exception import OSMException, OSMPackageConflict,\
     OSMPackageError, OSMPackageNotFound, OSMUnknownPackageType,\
@@ -123,6 +124,8 @@ class OSM():
         self.nsd_package_url = "{0}/osm/nsd/v1/ns_descriptors_content".\
                                format(self.base_url)
 
+    # Authentication
+
     def _create_session(self):
         self.headers = {"Accept": "application/json"}
         self.token = None
@@ -141,27 +144,38 @@ class OSM():
         self.headers.update({"Authorization": "Bearer {0}".format(token)})
         return token
 
+    # Packages
+
     @check_authorization
-    def get_ns_descriptor_id(self, ns_name):
+    def get_ns_descriptor_id(self, ns_filter):
+        """
+        Given a name (or ID), returns the NSD ID.
+        """
         response = requests.get(self.ns_descriptors_url,
                                 headers=self.headers,
                                 verify=False)
         nsds = json.loads(response.text)
         for nsd in nsds:
-            # (id == name) != _id
-            if nsd["id"] == ns_name:
-                return nsd["_id"]
+            if nsd.get("name", None) == ns_filter or\
+                    nsd.get("product-name", None) == ns_filter or\
+                    nsd.get("_id", None) == ns_filter:
+                return nsd.get("_id")
         return
 
     @check_authorization
-    def get_vnf_descriptor_id(self, vnf_name):
+    def get_vnf_descriptor_id(self, vnf_filter):
+        """
+        Given a name (or ID), returns the VNFD ID.
+        """
         response = requests.get(self.vnf_descriptors_url,
                                 headers=self.headers,
                                 verify=False)
         vnfds = json.loads(response.text)
         for vnfd in vnfds:
-            if vnfd.get("name", None) == vnf_name:
-                return vnfd["_id"]
+            if vnfd.get("name", None) == vnf_filter or\
+                    vnfd.get("product-name", None) == vnf_filter or\
+                    vnfd.get("_id", None) == vnf_filter:
+                return vnfd.get("_id")
         return
 
     @check_authorization
@@ -253,6 +267,149 @@ class OSM():
                                 headers=self.headers,
                                 verify=False)
         return json.loads(response.text)
+
+    @check_authorization
+    def upload_package(self, bin_file, url):
+        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+        res = requests.post(url, files=bin_file)
+        http_code = res.status
+        if http_code == 500:
+            raise OSMPackageError
+        output = json.loads(res.getvalue().decode())
+        print(str(output))
+        if http_code == 409:
+            raise OSMPackageConflict
+        return {"package": bin_file.filename,
+                "transaction_id": output["id"]}
+#        headers = self.headers
+#        headers.update({"Content-Type": "application/gzip"})
+#        hash_md5 = hashlib.md5()
+#        for chunk in iter(lambda: bin_file.read(4096), b""):
+#            hash_md5.update(chunk)
+#        md5sum = hash_md5.hexdigest()
+#        bin_file.seek(0)
+#        full_file = bin_file.read()
+#        bin_file.seek(0)
+#        headers.update({"Content-File-MD5": md5sum})
+#        headers.update({"Content-Length": str(len(full_file))})
+#        headers.update({"Expect": "100-continue"})
+#        curl_cmd = pycurl.Curl()
+#        curl_cmd.setopt(pycurl.URL, url)
+#        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
+#        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
+#        curl_cmd.setopt(pycurl.POST, 1)
+#        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
+#                          k in headers.keys()]
+#        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
+#        data = BytesIO()
+#        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+#        postdata = bin_file.read()
+#        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
+#        curl_cmd.perform()
+#        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+#        if http_code == 500:
+#            raise OSMPackageError
+#        output = json.loads(data.getvalue().decode())
+#        if http_code == 409:
+#            raise OSMPackageConflict
+#        return {"package": bin_file.filename,
+#                "transaction_id": output["id"]}
+
+    def upload_vnfd_package(self, bin_file):
+        return self.upload_package(bin_file, self.vnfd_package_url)
+
+    def upload_nsd_package(self, bin_file):
+        return self.upload_package(bin_file, self.nsd_package_url)
+
+    def guess_package_type(self, bin_file):
+        full_file = bin_file.read()
+        bin_file.seek(0)
+        tar = tarfile.open(fileobj=BytesIO(full_file), mode="r:gz")
+        for name in tar.getnames():
+            if os.path.splitext(name)[-1] == ".yaml":
+                member_file = tar.extractfile(tar.getmember(name))
+                descriptor = yaml.load(member_file.read())
+                if any(map(lambda x: "nsd-catalog"
+                           in x, [key for key in descriptor])):
+                    return "nsd"
+                if any(map(lambda x: "vnfd-catalog"
+                           in x, [key for key in descriptor])):
+                    return "vnfd"
+        return "unknown"
+
+    def onboard_package_remote(self, pkg_path):
+        pass
+#        if not os.path.isfile(pkg_path):
+#            try:
+#                pkg_path = download.fetch_content(pkg_path)
+#            except download.DownloadException:
+#                raise OSMPackageNotFound
+#        return self.onboard_package(pkg_path)
+
+    def onboard_package(self, pkg_path):
+        remove_after = False
+        fp = None
+        bin_file = None
+        output = None
+        if type(pkg_path) == FileStorage:
+            bin_file = pkg_path
+        else:
+            if not os.path.isfile(pkg_path):
+                remove_after = True
+            if os.path.isfile(pkg_path):
+                fp = open(pkg_path, "rb")
+                filename = os.path.basename(pkg_path)
+                mime = MimeTypes()
+                content_type = mime.guess_type(pkg_path)
+                bin_file = FileStorage(fp, filename, "package", content_type)
+        if bin_file is not None:
+            ptype = self.guess_package_type(bin_file)
+            if ptype == "vnfd":
+                output = self.post_vnfd_package(bin_file)
+            elif ptype == "nsd":
+                output = self.post_nsd_package(bin_file)
+            else:
+                raise OSMUnknownPackageType
+        if fp is not None:
+            fp.close()
+        if remove_after:
+            pkg_dir = os.path.dirname(pkg_path)
+            shutil.rmtree(pkg_dir)
+        return output
+
+    def delete_package(self, package_name):
+        descriptor_id = self.get_vnf_descriptor_id(package_name)
+        descriptor_type = "vnf"
+        if not descriptor_id:
+            descriptor_id = self.get_ns_descriptor_id(package_name)
+            descriptor_type = "ns"
+        if descriptor_id is None:
+            raise OSMPackageNotFound(
+                    "Package {} does not exist".format(package_name))
+        if descriptor_type == "ns":
+            del_url = "{0}/{1}".format(
+                self.ns_descriptors_url,
+                descriptor_id)
+        elif descriptor_type == "vnf":
+            del_url = "{0}/{1}".format(
+                self.vnf_descriptors_url,
+                descriptor_id)
+        else:
+            raise OSMUnknownPackageType(
+                    "Package {} with unknown type".format(package_name))
+        response = requests.delete("{0}".format(del_url),
+                                   headers=self.headers,
+                                   verify=False)
+        if response.status_code in (200, 201, 202, 204):
+            return {"package": package_name, "id": descriptor_id}
+        elif response.status_code == 409:
+            res_details = OSMResponseParsing.parse_failed(response)
+            raise OSMPackageConflict(res_details)
+        else:
+            res_details = OSMResponseParsing.parse_failed(response)
+            raise OSMException(res_details)
+
+    # Running instances
 
     def apply_mspl_action(self, instance_id, inst_md):
         if ("action" not in inst_md) or ("params" not in inst_md):
@@ -654,131 +811,3 @@ class OSM():
                                                params,
                                                output_dict)
         return output
-
-    @check_authorization
-    def post_package(self, bin_file, url):
-        pass
-#        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-#        headers = self.headers
-#        headers.update({"Content-Type": "application/gzip"})
-#        hash_md5 = hashlib.md5()
-#        for chunk in iter(lambda: bin_file.read(4096), b""):
-#            hash_md5.update(chunk)
-#        md5sum = hash_md5.hexdigest()
-#        bin_file.seek(0)
-#        full_file = bin_file.read()
-#        bin_file.seek(0)
-#        headers.update({"Content-File-MD5": md5sum})
-#        headers.update({"Content-Length": str(len(full_file))})
-#        headers.update({"Expect": "100-continue"})
-#        curl_cmd = pycurl.Curl()
-#        curl_cmd.setopt(pycurl.URL, url)
-#        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
-#        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
-#        curl_cmd.setopt(pycurl.POST, 1)
-#        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
-#                          k in headers.keys()]
-#        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
-#        data = BytesIO()
-#        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
-#        postdata = bin_file.read()
-#        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
-#        curl_cmd.perform()
-#        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-#        if http_code == 500:
-#            raise OSMPackageError
-#        output = json.loads(data.getvalue().decode())
-#        if http_code == 409:
-#            raise OSMPackageConflict
-#        return {"package": bin_file.filename,
-#                "transaction_id": output["id"]}
-
-    def post_vnfd_package(self, bin_file):
-        return self.post_package(bin_file, self.vnfd_package_url)
-
-    def post_nsd_package(self, bin_file):
-        return self.post_package(bin_file, self.nsd_package_url)
-
-    def guess_package_type(self, bin_file):
-        full_file = bin_file.read()
-        bin_file.seek(0)
-        tar = tarfile.open(fileobj=BytesIO(full_file), mode="r:gz")
-        for name in tar.getnames():
-            if os.path.splitext(name)[-1] == ".yaml":
-                member_file = tar.extractfile(tar.getmember(name))
-                descriptor = yaml.load(member_file.read())
-                if any(map(lambda x: "nsd-catalog"
-                           in x, [key for key in descriptor])):
-                    return "nsd"
-                if any(map(lambda x: "vnfd-catalog"
-                           in x, [key for key in descriptor])):
-                    return "vnfd"
-        return "unknown"
-
-    def onboard_package_remote(self, pkg_path):
-        pass
-#        if not os.path.isfile(pkg_path):
-#            try:
-#                pkg_path = download.fetch_content(pkg_path)
-#            except download.DownloadException:
-#                raise OSMPackageNotFound
-#        return self.onboard_package(pkg_path)
-
-    def onboard_package(self, pkg_path):
-        remove_after = False
-        fp = None
-        bin_file = None
-        output = None
-        if type(pkg_path) == FileStorage:
-            bin_file = pkg_path
-        else:
-            if not os.path.isfile(pkg_path):
-                remove_after = True
-            if os.path.isfile(pkg_path):
-                fp = open(pkg_path, "rb")
-                filename = os.path.basename(pkg_path)
-                mime = MimeTypes()
-                content_type = mime.guess_type(pkg_path)
-                bin_file = FileStorage(fp, filename, "package", content_type)
-        if bin_file is not None:
-            ptype = self.guess_package_type(bin_file)
-            if ptype == "vnfd":
-                output = self.post_vnfd_package(bin_file)
-            elif ptype == "nsd":
-                output = self.post_nsd_package(bin_file)
-            else:
-                raise OSMUnknownPackageType
-        if fp is not None:
-            fp.close()
-        if remove_after:
-            pkg_dir = os.path.dirname(pkg_path)
-            shutil.rmtree(pkg_dir)
-        return output
-
-    def remove_package(self, package_name):
-        descriptor_id = self.get_vnf_descriptor_id(package_name)
-        descriptor_type = "vnf"
-        if not descriptor_id:
-            descriptor_id = self.get_ns_descriptor_id(package_name)
-            descriptor_type = "ns"
-        if descriptor_id is None:
-            raise OSMPackageNotFound
-        if descriptor_type == "ns":
-            del_url = "{0}/{1}".format(
-                self.ns_descriptors_url,
-                descriptor_id)
-        elif descriptor_type == "vnf":
-            del_url = "{0}/{1}".format(
-                self.vnf_descriptors_url,
-                descriptor_id)
-        else:
-            raise OSMUnknownPackageType
-        response = requests.delete("{0}".format(del_url),
-                                   headers=self.headers,
-                                   verify=False)
-        if response.status_code in (200, 201, 202, 204):
-            return {"package": package_name}
-        elif response.status_code == 409:
-            raise OSMPackageConflict
-        else:
-            raise OSMException

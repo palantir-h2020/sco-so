@@ -15,4 +15,4 @@ so_blueprints = Blueprint("so__mon__base", __name__)
 @so_blueprints.route("/mon", methods=["GET"])
 def base() -> HttpResponse:
     data = {"name": "mon_api"}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)

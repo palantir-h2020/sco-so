@@ -26,14 +26,30 @@ from flask import request
 import json
 
 so_views = Blueprint("so_vnf_views", __name__)
+vnf_object = VnsfoVnsf()
 
+
+# Packages
 
 @so_views.route(endpoints.VNSF_C_VNSFS, methods=["GET"])
 def fetch_config_vnfs(instance_id=None):
-    vnf_object = VnsfoVnsf()
     return HttpResponse.json(
         HttpCode.OK, vnf_object.get_vnfr_config(instance_id))
 
+
+@so_views.route(endpoints.VNSF_C_VNSFS, methods=["POST"])
+def upload_config_vnf(vnf_pkg_file):
+    return HttpResponse.json(
+        HttpCode.ACCEPTED, vnf_object.onboard_package(vnf_pkg_file))
+
+
+@so_views.route(endpoints.VNSF_C_VNSFS, methods=["DELETE"])
+def delete_config_vnf(instance_id=None):
+    return HttpResponse.json(
+        HttpCode.ACCEPTED, vnf_object.delete_package(instance_id))
+
+
+# Running instances
 
 @so_views.route(endpoints.VNSF_R_VNSFS, methods=["GET"])
 def fetch_running_vnfs(instance_id=None):

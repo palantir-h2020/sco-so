@@ -16,4 +16,4 @@ so_blueprints = Blueprint("so__lcm__base", __name__)
 @so_blueprints.route("/lcm", methods=["GET"])
 def base():
     data = {"name": "lcm_api"}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
