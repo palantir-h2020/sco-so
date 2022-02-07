@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from common.config.parser.fullparser import FullConfParser
-# from common.core import download
+from common.core import download
 from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from common.utils.osm_response_parsing import OSMResponseParsing
@@ -29,10 +29,10 @@ from io import BytesIO
 from mimetypes import MimeTypes
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from werkzeug.datastructures import FileStorage
-# import hashlib
+import hashlib
 import json
 import os
-# import pycurl
+import pycurl
 import requests
 import shutil
 import tarfile
@@ -67,6 +67,7 @@ def check_authorization(f):
 class OSM():
     """
     OSM northbound API client (NBI).
+    See OSM endpoints in https://<osm_ip>:9999/osm/
     """
 
     def __init__(self):
@@ -179,30 +180,36 @@ class OSM():
         return
 
     @check_authorization
-    def get_ns_descriptors(self, ns_name=None):
+    def get_ns_descriptors(self, ns_filter=None):
         response = requests.get(self.ns_descriptors_url,
                                 headers=self.headers,
                                 verify=False)
         nsds = json.loads(response.text)
-        if ns_name:
-            return {"ns": [
-                self.filter_output_nsd(x) for x in nsds
-                if x["name"] == ns_name]
-                }
-        return {"ns": [self.filter_output_nsd(x) for x in nsds]}
+#        if ns_name:
+#            return {"ns": [
+#                self.filter_output_nsd(x) for x in nsds
+#                if x["name"] == ns_name]
+#                }
+#        return {"ns": [self.filter_output_nsd(x) for x in nsds]}
+        result = nsds
+        if ns_filter is not None:
+            result = [
+                    x for x in nsds if x.get("name") == ns_filter or
+                    x.get("_id") == ns_filter]
+        return {"ns": list(map(lambda x: self.filter_output_nsd(x), result))}
 
     @check_authorization
-    def get_vnf_descriptors(self, vnf_name=None):
+    def get_vnf_descriptors(self, vnf_filter=None):
         response = requests.get(self.vnf_descriptors_url,
                                 headers=self.headers,
                                 verify=False)
         vnfs = json.loads(response.text)
-        if vnf_name:
-            return {"vnf": [
-                self.filter_output_vnfd(x) for x in vnfs
-                if x["name"] == vnf_name]
-                }
-        return {"vnf": [self.filter_output_vnfd(x) for x in vnfs]}
+        result = vnfs
+        if vnf_filter is not None:
+            result = [
+                    x for x in vnfs if x.get("product-name") == vnf_filter or
+                    x.get("_id") == vnf_filter]
+        return {"vnf": list(map(lambda x: self.filter_output_vnfd(x), result))}
 
     def filter_output_nsd(self, nsd):
         out_nsd = {}
@@ -270,55 +277,52 @@ class OSM():
 
     @check_authorization
     def upload_package(self, bin_file, url):
+        # Note that using requests produces a 401 error
+        # Instead, use the Python cURL implementation
+        # and set proper flags
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-        res = requests.post(url, files=bin_file)
-        http_code = res.status
+        headers = self.headers
+        headers.update({"Content-Type": "application/gzip"})
+        hash_md5 = hashlib.md5()
+        for chunk in iter(lambda: bin_file.read(4096), b""):
+            hash_md5.update(chunk)
+        md5sum = hash_md5.hexdigest()
+        bin_file.seek(0)
+        full_file = bin_file.read()
+        bin_file.seek(0)
+        headers.update({"Content-File-MD5": md5sum})
+        headers.update({"Content-Length": str(len(full_file))})
+        headers.update({"Expect": "100-continue"})
+        curl_cmd = pycurl.Curl()
+        curl_cmd.setopt(pycurl.URL, url)
+        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
+        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
+        curl_cmd.setopt(pycurl.POST, 1)
+        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
+                          k in headers.keys()]
+        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
+        data = BytesIO()
+        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
+        postdata = bin_file.read()
+        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
+        curl_cmd.perform()
+        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
+        if http_code >= 400 and http_code < 500:
+            raise SOException("Authentication issue")
         if http_code == 500:
             raise OSMPackageError
-        output = json.loads(res.getvalue().decode())
-        print(str(output))
+        output = json.loads(data.getvalue().decode())
         if http_code == 409:
             raise OSMPackageConflict
         return {"package": bin_file.filename,
                 "transaction_id": output["id"]}
-#        headers = self.headers
-#        headers.update({"Content-Type": "application/gzip"})
-#        hash_md5 = hashlib.md5()
-#        for chunk in iter(lambda: bin_file.read(4096), b""):
-#            hash_md5.update(chunk)
-#        md5sum = hash_md5.hexdigest()
-#        bin_file.seek(0)
-#        full_file = bin_file.read()
-#        bin_file.seek(0)
-#        headers.update({"Content-File-MD5": md5sum})
-#        headers.update({"Content-Length": str(len(full_file))})
-#        headers.update({"Expect": "100-continue"})
-#        curl_cmd = pycurl.Curl()
-#        curl_cmd.setopt(pycurl.URL, url)
-#        curl_cmd.setopt(pycurl.SSL_VERIFYPEER, 0)
-#        curl_cmd.setopt(pycurl.SSL_VERIFYHOST, 0)
-#        curl_cmd.setopt(pycurl.POST, 1)
-#        pycurl_headers = ["{0}: {1}".format(k, headers[k]) for
-#                          k in headers.keys()]
-#        curl_cmd.setopt(pycurl.HTTPHEADER, pycurl_headers)
-#        data = BytesIO()
-#        curl_cmd.setopt(pycurl.WRITEFUNCTION, data.write)
-#        postdata = bin_file.read()
-#        curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
-#        curl_cmd.perform()
-#        http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-#        if http_code == 500:
-#            raise OSMPackageError
-#        output = json.loads(data.getvalue().decode())
-#        if http_code == 409:
-#            raise OSMPackageConflict
-#        return {"package": bin_file.filename,
-#                "transaction_id": output["id"]}
 
     def upload_vnfd_package(self, bin_file):
+        # Endpoint: "/vnfpkgm/v1/vnf_packages_content"
         return self.upload_package(bin_file, self.vnfd_package_url)
 
     def upload_nsd_package(self, bin_file):
+        # Endpoint: "/nsd/v1/ns_descriptors_content"
         return self.upload_package(bin_file, self.nsd_package_url)
 
     def guess_package_type(self, bin_file):
@@ -328,25 +332,25 @@ class OSM():
         for name in tar.getnames():
             if os.path.splitext(name)[-1] == ".yaml":
                 member_file = tar.extractfile(tar.getmember(name))
-                descriptor = yaml.load(member_file.read())
-                if any(map(lambda x: "nsd-catalog"
-                           in x, [key for key in descriptor])):
+                descriptor = yaml.load(
+                        member_file.read(), Loader=yaml.FullLoader)
+                if "nsd" in descriptor.keys():
                     return "nsd"
-                if any(map(lambda x: "vnfd-catalog"
-                           in x, [key for key in descriptor])):
+                if "vnfd" in descriptor.keys():
                     return "vnfd"
         return "unknown"
 
     def onboard_package_remote(self, pkg_path):
-        pass
-#        if not os.path.isfile(pkg_path):
-#            try:
-#                pkg_path = download.fetch_content(pkg_path)
-#            except download.DownloadException:
-#                raise OSMPackageNotFound
-#        return self.onboard_package(pkg_path)
+        # Not expected to be used
+        if not os.path.isfile(pkg_path):
+            try:
+                pkg_path = download.fetch_content(pkg_path)
+            except download.DownloadException:
+                raise OSMPackageNotFound
+        return self.onboard_package(pkg_path)
 
     def onboard_package(self, pkg_path):
+        # Called by endpoints
         remove_after = False
         fp = None
         bin_file = None
@@ -365,9 +369,9 @@ class OSM():
         if bin_file is not None:
             ptype = self.guess_package_type(bin_file)
             if ptype == "vnfd":
-                output = self.post_vnfd_package(bin_file)
+                output = self.upload_vnfd_package(bin_file)
             elif ptype == "nsd":
-                output = self.post_nsd_package(bin_file)
+                output = self.upload_nsd_package(bin_file)
             else:
                 raise OSMUnknownPackageType
         if fp is not None:

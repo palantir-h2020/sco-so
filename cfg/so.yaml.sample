@@ -1,20 +1,10 @@
-general:
-  host: 0.0.0.0
-  port: 8008
-
 osm:
   nbi:
-    protocol: https
+    protocol: http
     host: 10.101.10.209
-    port: 9999
+    port: 80
     username: admin
     password: admin
-#  package:
-#    host: 192.168.33.111
-#    port: 9090
-#  ro:
-#    host: 192.168.33.111
-#    port: 9999
 
 nfs:
   general:

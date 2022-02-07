@@ -32,20 +32,20 @@ so_blueprints = Blueprint("so__mon__vnf", __name__)
 @so_blueprints.route("/mon/vnf", methods=["GET"])
 def vnf_list() -> HttpResponse:
     data = VNF.vnf_list()
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/targets", methods=["GET"])
 def targets_list() -> HttpResponse:
     data = {"targets": prometheus_targets_handler.targets_list()}
     data = {"results": data}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/targets", methods=["POST", "PUT", "DELETE"])
 def targets_handle() -> HttpResponse:
     return_code = prometheus_targets_handler.update_target(request)
-    return HttpResponse.formatted("OK", return_code)
+    return HttpResponse.infer("OK", return_code)
 
 
 @so_blueprints.route("/mon/targets/metrics", methods=["GET"])
@@ -58,13 +58,13 @@ def vnf_metrics() -> HttpResponse:
         metrics_.mongodb_pushgateway_metrics(vnf_id, metric_name),
     ]
     data = {"results": data}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/metrics", methods=["GET"])
 def vnf_metrics_handle() -> HttpResponse:
     data = prometheus_metrics.prometheus_metrics(request)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/metrics/vnf", methods=["POST"])
@@ -73,17 +73,17 @@ def vnf_metrics_request() -> HttpResponse:
         data = pushgateway.persist_metric_prometheus_pushgateway(request)
     except Exception:
         data = command_request.metric_remote_command(request)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/metrics/node", methods=["POST", "DELETE"])
 def vnf_metrics_node() -> HttpResponse:
     data = node.manual_install_uninstall_exporter(request)
     data = {"results": data}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/metrics/background", methods=["POST"])
 def background() -> HttpResponse:
     data = background_mon.background_monitoring(request)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)

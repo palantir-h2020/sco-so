@@ -80,7 +80,8 @@ class HttpResponse:
         content_type_is_expected = any([ct for ct in map(
             lambda x: ct_accept in x, expected_ct)])
         if not content_type_is_expected:
-            return error_on_unallowed_method("Content-Type not expected")
+            return error_on_unallowed_method(
+                "Content-Type not expected: {}".format(ct_accept))
         # Output will be JSON by default
         output = json.dumps(data)
         if "yaml" in ct_accept:

@@ -32,6 +32,9 @@ so_views = Blueprint("so_ns_views", __name__)
 ns_object = VnsfoNs()
 
 
+# TODO: REMOVE THIS INTERMEDIATE LAYER
+
+
 # Packages
 
 @so_views.route(endpoints.NS_C_NSS, methods=["GET"])

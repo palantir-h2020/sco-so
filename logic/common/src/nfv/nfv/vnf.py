@@ -43,6 +43,7 @@ class VnsfoVnsf:
 
     def onboard_package(self, vnf_pkg_file):
         return self.orchestrator.upload_vnfd_package(vnf_pkg_file)
+        # return self.orchestrator.onboard_package(vnf_pkg_file)
 
     def delete_package(self, vnf_name=None):
         return self.orchestrator.delete_package(vnf_name)

@@ -14,6 +14,7 @@ import yaml
 
 class AllowedContentTypes(Enum):
     CONTENT_TYPE_JSON = "application/json"
+    CONTENT_TYPE_MULTI = "multipart/form-data"
     CONTENT_TYPE_TEXT = "text/plain"
     CONTENT_TYPE_YAML = "application/x-yaml"
 
@@ -114,9 +115,13 @@ def convert_to_yaml(data) -> str:
 
 
 def convert_to_ct(data, content_type: str):
-    if "yaml" in content_type:
+    # Use JSON Content-Type by default
+    if content_type in [None, "*/*"]:
+        content_type = AllowedContentTypes.CONTENT_TYPE_JSON.value
+    if AllowedContentTypes.CONTENT_TYPE_YAML.value in content_type:
         return convert_to_yaml(data)
-    elif "json" in content_type:
+    elif AllowedContentTypes.CONTENT_TYPE_JSON.value in content_type or\
+            AllowedContentTypes.CONTENT_TYPE_MULTI.value in content_type:
         return data
     else:
         raise Exception("Unsupported or non-existing " +

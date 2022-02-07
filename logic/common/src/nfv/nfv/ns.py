@@ -40,8 +40,19 @@ class VnsfoNs:
             raise Exception(
                 "Cannot create instance of OSMR{}".format(release))
 
+    # Packages
+
     def get_nsr_config(self, ns_name=None):
         return self.orchestrator.get_ns_descriptors(ns_name)
+
+    def onboard_package(self, ns_pkg_file):
+        return self.orchestrator.upload_nsd_package(ns_pkg_file)
+        # return self.orchestrator.onboard_package(ns_pkg_file)
+
+    def delete_package(self, instance_id=None):
+        return self.orchestrator.delete_package(instance_id)
+
+    # Running instances
 
     def get_nsr_running(self, instance_id=None):
         return self.orchestrator.get_ns_instances(instance_id)

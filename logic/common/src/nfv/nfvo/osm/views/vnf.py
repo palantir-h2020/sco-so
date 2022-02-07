@@ -29,6 +29,8 @@ so_views = Blueprint("so_vnf_views", __name__)
 vnf_object = VnsfoVnsf()
 
 
+# TODO: REMOVE THIS INTERMEDIATE LAYER
+
 # Packages
 
 @so_views.route(endpoints.VNSF_C_VNSFS, methods=["GET"])
@@ -37,10 +39,10 @@ def fetch_config_vnfs(instance_id=None):
         HttpCode.OK, vnf_object.get_vnfr_config(instance_id))
 
 
-@so_views.route(endpoints.VNSF_C_VNSFS, methods=["POST"])
-def upload_config_vnf(vnf_pkg_file):
-    return HttpResponse.json(
-        HttpCode.ACCEPTED, vnf_object.onboard_package(vnf_pkg_file))
+# @so_views.route(endpoints.VNSF_C_VNSFS, methods=["POST"])
+# def upload_config_vnf(vnf_pkg_file):
+#     return HttpResponse.json(
+#         HttpCode.ACCEPTED, vnf_object.onboard_package(vnf_pkg_file))
 
 
 @so_views.route(endpoints.VNSF_C_VNSFS, methods=["DELETE"])

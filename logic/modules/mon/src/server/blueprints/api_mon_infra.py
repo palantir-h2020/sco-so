@@ -22,4 +22,4 @@ def infra_list() -> HttpResponse:
     if infra_id is None:
         filter_infra = infra_name
     data = infra_handler.infra_list(filter_infra)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)

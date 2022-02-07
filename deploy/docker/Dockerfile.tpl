@@ -50,13 +50,13 @@ WORKDIR ${SO_ROOT}/reqs
 # Note: the following folders should exist, as these provide
 # stack-wide and component-local dependencies
 
-## Install common-related requisites
-RUN ([ -f common/pip ] && pip3 install -r common/pip) || true
+## Install common-related requisites. System first (apt), then pip
 RUN ([ -f common/apt ] && (cat common/apt | xargs apt-get install -y)) || true
+RUN ([ -f common/pip ] && pip3 install -r common/pip) || true
 
-## Install local-related requisites
-RUN ([ -f local/pip ] && pip3 install -r local/pip) || true
+## Install local-related requisites. System first (apt), then pip
 RUN ([ -f local/apt ] && (cat local/apt | xargs apt-get install -y)) || true
+RUN ([ -f local/pip ] && pip3 install -r local/pip) || true
 
 WORKDIR ${SO_ROOT}
 #CMD ["python3", "main.py"]
