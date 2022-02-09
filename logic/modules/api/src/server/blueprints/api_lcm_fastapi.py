@@ -8,6 +8,7 @@
 # from blueprints.schemas.mon_infra import \
 #      MonitoringInfrastructure as MonInfraSchema
 from common.config.api.api_categories import APICategories
+from common.exception import exception
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response_fastapi import HttpResponse
@@ -38,6 +39,7 @@ def get_response_out(result, content_type: str):
 # @router.get("/infra", response_model=Union[List[MonInfraSchema], str],
 #             status_code=HttpCode.OK)
 @router.get("/ns", status_code=HttpCode.OK)
+@exception.handle_exc_resp
 def ns_inst_list(request: Request,
                  id: Optional[str] = None):
     """
@@ -59,6 +61,7 @@ def ns_inst_list(request: Request,
 
 
 @router.delete("/ns", status_code=HttpCode.ACCEPTED)
+@exception.handle_exc_resp
 def ns_inst_delete(request: Request, id: str):
     """
     Delete running NS instance.
@@ -78,6 +81,7 @@ def ns_inst_delete(request: Request, id: str):
 
 
 @router.get("/vnf", status_code=HttpCode.OK)
+@exception.handle_exc_resp
 def vnf_inst_list(request: Request,
                   id: Optional[str] = None):
     """

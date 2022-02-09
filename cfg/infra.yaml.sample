@@ -10,6 +10,6 @@ infrastructure:
      id: d762daf2-5e62-4bf4-b979-718b8349ed81
      type: kubernetes
      config:
-       file: "./deploy/local/tenant2-k8s-cluster.yaml"
+       file: "./deploy/local/orion-osm-k8s-cluster.yaml"
      tenant: tenant2
      deployments: ["edge", "vcpe"]

@@ -1,3 +1,7 @@
-configparser
-flask
-mongoengine
+configparser==5.2.0
+flask==2.0.2
+mongoengine==0.23.1
+# pycurl only used by PKG, yet imported at module level
+pycurl==7.44.1
+pyyaml==6.0
+requests==2.27.1

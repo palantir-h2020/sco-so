@@ -3,56 +3,34 @@
 
 # Copyright 2022-present i2CAT
 
-from common.nfv.nfv.vnf import VnsfoVnsf
-# TODO: remove the views' level of indirection in all methods
-from common.nfv.nfvo.osm.views import vnf
-from common.server.http.http_response import HttpResponse
-from common.utils.osm_response_parsing import OSMResponseParsing
+from common.exception import exception
+from common.nfv.nfv.vnf import OSMInterfaceVNF
+from common.server.endpoints import SOEndpoints
 from flask import Blueprint, request
 
 so_blueprints = Blueprint("so__pkg__vnf", __name__)
-vnf_obj = VnsfoVnsf()
 
 
-@so_blueprints.route("/pkg/vnf", methods=["GET"])
+@so_blueprints.route(SOEndpoints.PKG_VNF, methods=["GET"])
+@exception.handle_exc_resp
 def list_pkg_vnf():
     _id = request.args.get("id")
     _name = request.args.get("name")
-    filter = _id
-    if filter is None:
-        filter = _name
-    return vnf.fetch_config_vnfs(filter)
+    vnf_obj = OSMInterfaceVNF()
+    return vnf_obj.get_vnfr_config(_id, _name)
 
 
-@so_blueprints.route("/pkg/vnf", methods=["POST"])
+@so_blueprints.route(SOEndpoints.PKG_VNF, methods=["POST"])
+@exception.handle_exc_resp
 def upload_pkg_vnf():
-    vnf_pkg_file = request.files["file"]
-    # vnf_pkg_contents = vnf_pkg_file.read()
-    vnf_pkg_contents = vnf_pkg_file
-    # TODO: same as here, remove the views' level
-    # of indirection in all methods
-    # return vnf.upload_config_vnf(vnf_pkg_contents)
-    return vnf_obj.onboard_package(vnf_pkg_contents)
+    _pkg_file = request.files["file"]
+    vnf_obj = OSMInterfaceVNF()
+    return vnf_obj.onboard_package(_pkg_file)
 
 
-@so_blueprints.route("/pkg/vnf", methods=["DELETE"])
+@so_blueprints.route(SOEndpoints.PKG_VNF, methods=["DELETE"])
+@exception.handle_exc_resp
 def delete_pkg_vnf():
     _id = request.args.get("id")
-    content_type = request.environ.get("HTTP_ACCEPT")
-    try:
-        result = vnf.delete_config_vnf(_id)
-        parsed_result = OSMResponseParsing.parse_generic(result, content_type)
-        if "internal-error" not in parsed_result.keys():
-            return HttpResponse.infer({
-                "output": parsed_result.get("response")},
-                parsed_result.get("status-code"))
-        else:
-            return HttpResponse.infer({
-                "output": parsed_result.get("response"),
-                "internal-error": parsed_result.get("internal-error")},
-                parsed_result.get("status-code"))
-    except Exception as e:
-        exc_data = OSMResponseParsing.parse_exception(e)
-        return HttpResponse.infer({
-            "output": exc_data.get("detail")},
-            exc_data.get("status"), content_type)
+    vnf_obj = OSMInterfaceVNF()
+    return vnf_obj.delete_package(_id)

@@ -79,11 +79,16 @@ function undeploy_modules() {
     # $module: module name iterated from all modules
     for module in ${PWD}/../logic/modules/*; do
         modl_base=$(basename $module)
+        modl_cont="so-${modl_base}"
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
             if [ -d ${module} ]; then
                 title_info "Undeploying module: ${modl_base}"
-                setup_env_vars "${module}"
-                setup_modl_undeploy_folder "${module}"
+                if [ ! "$(docker ps -a | grep ${modl_cont})" ]; then
+                    text_warning "Module: ${modl_base} not deployed"
+                else
+                    setup_env_vars "${module}"
+                    setup_modl_undeploy_folder "${module}"
+                fi
                 # Reset the flag that indicates a module should be skipped
                 MODULE_SKIP=0
 	    fi

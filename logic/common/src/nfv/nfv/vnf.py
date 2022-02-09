@@ -22,7 +22,7 @@ from typing import Dict, List
 import requests
 
 
-class VnsfoVnsf:
+class OSMInterfaceVNF:
 
     def __init__(self, release=None):
         try:
@@ -36,17 +36,26 @@ class VnsfoVnsf:
                 "Cannot create instance of OSMR{}".format(release))
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
+    def _select_args(self, args_list: list) -> str:
+        if not isinstance(args_list, list):
+            return args_list
+        args_sel = list(filter(lambda x: x is not None, args_list))
+        # The most prioritary argument should be in first position
+        if len(args_sel) > 0:
+            args_sel = args_sel[0]
+        return args_sel
+
     # Packages
 
-    def get_vnfr_config(self, vnf_name=None):
-        return self.orchestrator.get_vnf_descriptors(vnf_name)
+    def get_vnfr_config(self, pkg_id=None, pkg_name=None):
+        filter_arg = self._select_args([pkg_id, pkg_name])
+        return self.orchestrator.get_vnf_descriptors(filter_arg)
 
-    def onboard_package(self, vnf_pkg_file):
-        return self.orchestrator.upload_vnfd_package(vnf_pkg_file)
-        # return self.orchestrator.onboard_package(vnf_pkg_file)
+    def onboard_package(self, pkg_file):
+        return self.orchestrator.upload_vnfd_package(pkg_file)
 
-    def delete_package(self, vnf_name=None):
-        return self.orchestrator.delete_package(vnf_name)
+    def delete_package(self, pkg_name=None):
+        return self.orchestrator.delete_package(pkg_name)
 
     # Running instances
 

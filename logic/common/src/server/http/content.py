@@ -13,6 +13,8 @@ import yaml
 
 
 class AllowedContentTypes(Enum):
+    CONTENT_TYPE_APPGZIP = "application/gzip"
+    CONTENT_TYPE_ANY = "*/*"
     CONTENT_TYPE_JSON = "application/json"
     CONTENT_TYPE_MULTI = "multipart/form-data"
     CONTENT_TYPE_TEXT = "text/plain"
@@ -85,25 +87,27 @@ class YAMLDumper(yaml.Dumper):
 
 
 def convert_to_json(data) -> dict:
+    result = data
+    if isinstance(data, bytes):
+        result = result.decode("ascii")
     if isinstance(data, str):
-        try:
-            data = data.decode("ascii")
-        except Exception:
-            if data.startswith("b'") or data.startswith('b"'):
-                data = data[1:]
+        if data.startswith("b'") or data.startswith('b"'):
+            result = result[1:]
         try:
             # Replace strings in the form "'{\"k\":\"v\"}'"
-            data = data.replace("'", "")
-            data = data.replace("\n", "")
-            data = data.replace("\\n", "")
-            data = json.loads(data)
+            result = result.replace("'", "")
+            result = result.replace("\n", "")
+            result = result.replace("\\n", "")
+            result = json.loads(result)
         except Exception:
             pass
     # return json.dumps(data)
-    return data
+    return result
 
 
 def convert_to_yaml(data) -> str:
+    if isinstance(data, bytes):
+        result = result.decode("ascii")
     if isinstance(data, str):
         data = convert_to_json(data)
     if isinstance(data, dict):
@@ -114,15 +118,19 @@ def convert_to_yaml(data) -> str:
             data = str(data)
 
 
-def convert_to_ct(data, content_type: str):
-    # Use JSON Content-Type by default
-    if content_type in [None, "*/*"]:
-        content_type = AllowedContentTypes.CONTENT_TYPE_JSON.value
-    if AllowedContentTypes.CONTENT_TYPE_YAML.value in content_type:
+def convert_to_ct(data, accept_type: str):
+    print(".....................................>")
+    print("........ accept_type={}..............>".format(accept_type))
+    print(".....................................>")
+    # Enforce JSON by default when no specific preferences are provided
+    if accept_type == AllowedContentTypes.CONTENT_TYPE_ANY.value:
+        accept_type = AllowedContentTypes.CONTENT_TYPE_JSON.value
+    if AllowedContentTypes.CONTENT_TYPE_YAML.value in accept_type:
         return convert_to_yaml(data)
-    elif AllowedContentTypes.CONTENT_TYPE_JSON.value in content_type or\
-            AllowedContentTypes.CONTENT_TYPE_MULTI.value in content_type:
+    elif any(map(lambda x: x in accept_type,
+            [AllowedContentTypes.CONTENT_TYPE_JSON.value,
+             AllowedContentTypes.CONTENT_TYPE_TEXT.value])):
         return data
     else:
         raise Exception("Unsupported or non-existing " +
-                        "Content-Type: {}".format(content_type))
+                        "Accept-Type: {}".format(accept_type))

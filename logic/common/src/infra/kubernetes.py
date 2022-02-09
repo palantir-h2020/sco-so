@@ -32,14 +32,12 @@ class SOKubernetes():
         self.k8s_api_v1 = k8s_client.CoreV1Api()
 
     def _load_kubeconfig(self, k8sconfig_path: str):
-        print(k8sconfig_path)
         common_path = FileHandling.extract_common_path(
             os.path.abspath(__file__),
             os.path.normpath(k8sconfig_path),
             "infra")
         k8s_cfg_file = os.path.normpath(
                        os.path.join(common_path, k8sconfig_path))
-        print(k8s_cfg_file)
         self.kubeconfig = None
         if os.path.isfile(k8s_cfg_file):
             k8s_cfg_ct = open(k8s_cfg_file, "r")
@@ -91,27 +89,53 @@ class SOKubernetes():
                 result.get("nodes").append(node_dict)
         return result
 
-        def pod_describe(self, name: str, namespace: str = None) -> dict():
-            if namespace is not None:
-                return self.k8s_api_v1.read_namespaced_pod(namespace, name)
-            pod_dict = {}
-            pod_list = self.k8s_api_v1.list_pod_for_all_namespaces(watch=False)
-            for pod in pod_list.items:
-                curr_name = pod.metadata.name
-                if name == curr_name:
-                    namespace = pod.metadata.namespace
-                    nodes = list(map(
-                        lambda x: x.name, pod.metadata.owner_references))
-                    container_id = list(map(
-                        lambda x: x.container_id,
-                        pod.status._container_statuses))
-                    image_id = list(map(
-                        lambda x: x.image_id, pod.status._container_statuses))
-                    pod_dict = {
-                        "name": curr_name,
-                        "namespace": namespace,
-                        "nodes": nodes,
-                        "container-id": container_id,
-                        "image-id": image_id,
-                    }
-            return pod_dict
+    def namespace_list(self, namespace_id: str = None) -> list:
+        namespaces = [x.metadata.name for x in self.k8s_api_v1.list_namespace(
+                watch=False, timeout_seconds=3, _request_timeout=2).items]
+        if namespace_id is not None:
+            # Note: this is particular to the way OSM creates the namespaces:
+            # e.g.: "squid-metrics-kdu-8770df0a-380d-4cf9-ae40-ee698172b9bd"
+            # and therefore, filtering must not be necessarily explicit
+            namespaces = list(
+                    filter(lambda x: x == namespace_id or
+                           x.endswith("-{}".format(namespace_id)), namespaces))
+        return namespaces
+
+    def pod_list(self, namespace_id: str = None) -> list:
+        pod_list_ns = []
+        namespaces = self.namespace_list(namespace_id)
+        for namespace in namespaces:
+            pods = self.k8s_api_v1.list_namespaced_pod(
+                namespace=namespace, watch=False, timeout_seconds=3,
+                _request_timeout=2)
+            pod_ns_struct = {
+                "namespace": namespace,
+                "pods": pods
+            }
+            pod_list_ns.append(pod_ns_struct)
+        return pod_list_ns
+
+    def pod_describe(self, name: str, namespace: str = None) -> dict():
+        if namespace is not None:
+            return self.k8s_api_v1.read_namespaced_pod(namespace, name)
+        pod_dict = {}
+        pod_list = self.pod_list(namespace)
+        for pod in pod_list.items:
+            curr_name = pod.metadata.name
+            if name == curr_name:
+                namespace = pod.metadata.namespace
+                nodes = list(map(
+                    lambda x: x.name, pod.metadata.owner_references))
+                container_id = list(map(
+                    lambda x: x.container_id,
+                    pod.status._container_statuses))
+                image_id = list(map(
+                    lambda x: x.image_id, pod.status._container_statuses))
+                pod_dict = {
+                    "name": curr_name,
+                    "namespace": namespace,
+                    "nodes": nodes,
+                    "container-id": container_id,
+                    "image-id": image_id,
+                }
+        return pod_dict

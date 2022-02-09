@@ -7,9 +7,64 @@
 
 from flask import jsonify
 from common.server.http.http_code import HttpCode
-from common.server.http.http_response import HttpResponse
+try:
+    from common.server.http.http_response_fastapi import HttpResponse
+except Exception:
+    from common.server.http.http_response import HttpResponse
+from common.utils.osm_response_parsing import OSMResponseParsing
 from enum import Enum
+from functools import wraps
+from requests.models import Response
+from requests.exceptions import ConnectionError
 from werkzeug.exceptions import HTTPException
+import re
+
+
+def handle_exc_resp(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            status = HttpCode.OK
+            result = func(*args, **kwargs)
+            if isinstance(result, Response):
+                status = result.status_code
+                result = result._content
+                if isinstance(result, bytes):
+                    result = result.decode("ascii")
+            else:
+                try:
+                    status = result.get("status")
+                    # Remove the status flag upon its processing
+                    result.pop("status", None)
+                except Exception:
+                    pass
+            # In case of some internal component returning HTTP 204
+            # ("NO CONTENT") but elsewhere some content is emitted,
+            # content has priority and the HTTP code is adjusted
+            if status == 204 and len(result) > 0:
+                status = HttpCode.ACCEPTED
+            return HttpResponse.json(status, result)
+        except ConnectionError as e:
+            e_msg = str(e)
+            final_msg = "Network timeout. Details: {}".format(e_msg)
+            try:
+                re_groups = re.match(
+                    ".*HTTPConnectionPool\(host='(.*)', port=(.*)\):.*", e_msg)
+                re_groups_len = len(re_groups.groups())
+                if re_groups_len > 1:
+                    host = re_groups.group(1)
+                    port = re_groups.group(2)
+                    final_msg = "Network timeout to host={}, port={}".format(
+                        host, port) + ". Ensure the service is up"
+            except Exception:
+                pass
+            return HttpResponse.infer(
+                {"error": final_msg},
+                HttpCode.NET_CONN_TIMEOUT)
+        except Exception as e:
+            parsed_result, status = OSMResponseParsing.parse_exception(e)
+            return HttpResponse.infer(parsed_result, status)
+    return wrapper
 
 
 class ExceptionCode(Enum):
@@ -19,6 +74,7 @@ class ExceptionCode(Enum):
     IMPROPER_USAGE = "Improper usage"
     INTERNAL_ERROR = "Internal server error"
     INVALID_CONTENT_TYPE = "Invalid Content-Type"
+    NET_CONN_TIMEOUT = "Network connection error"
     NOT_FOUND = "Method not found"
     NOT_IMPLEMENTED = "Method not implemented"
 
@@ -78,6 +134,13 @@ class SOException(Exception):
             error_msg)
 
     @staticmethod
+    def network_connection_error(error_msg: str = None) -> HTTPException:
+        return SOException.abort(
+            HttpCode.NET_CONN_TIMEOUT,
+            ExceptionCode.NET_CONN_TIMEOUT,
+            error_msg)
+
+    @staticmethod
     def invalid_content_type(error_msg: str = None) -> HTTPException:
         return SOException.abort(
             HttpCode.UNSUP_MEDIA,
@@ -103,6 +166,21 @@ class SOException(Exception):
         raise SOException("Bad configuration. {}".format(error_msg))
 
 
-class SOConfigException(Exception):
+class SONotFoundException(SOException):
     def __init__(self, message):
-        super().__init__("Configuration issue. {}".format(message))
+        self.msg = message
+        super().__init__(message)
+
+
+class SONetworkConnectionException(SOException):
+    def __init__(self, message):
+        self.msg = message
+        super().__init__(message)
+
+
+# TODO Use consistently w.r.t. others
+class SOConfigException(SOException):
+    def __init__(self, message):
+        self.msg = message
+        super().__init__(message)
+        # super().__init__("Configuration issue. {}".format(message))

@@ -16,7 +16,7 @@
 # limitations under the License.
 
 from common.exception.exception import SOException
-from common.nfv.nfv.vnf import VnsfoVnsf
+from common.nfv.nfv.vnf import OSMInterfaceVNF
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response import HttpResponse
@@ -26,49 +26,27 @@ from flask import request
 import json
 
 so_views = Blueprint("so_vnf_views", __name__)
-vnf_object = VnsfoVnsf()
-
-
-# TODO: REMOVE THIS INTERMEDIATE LAYER
-
-# Packages
-
-@so_views.route(endpoints.VNSF_C_VNSFS, methods=["GET"])
-def fetch_config_vnfs(instance_id=None):
-    return HttpResponse.json(
-        HttpCode.OK, vnf_object.get_vnfr_config(instance_id))
-
-
-# @so_views.route(endpoints.VNSF_C_VNSFS, methods=["POST"])
-# def upload_config_vnf(vnf_pkg_file):
-#     return HttpResponse.json(
-#         HttpCode.ACCEPTED, vnf_object.onboard_package(vnf_pkg_file))
-
-
-@so_views.route(endpoints.VNSF_C_VNSFS, methods=["DELETE"])
-def delete_config_vnf(instance_id=None):
-    return HttpResponse.json(
-        HttpCode.ACCEPTED, vnf_object.delete_package(instance_id))
+vnf_object = OSMInterfaceVNF()
 
 
 # Running instances
 
-@so_views.route(endpoints.VNSF_R_VNSFS, methods=["GET"])
+#@so_views.route(endpoints.VNSF_R_VNSFS, methods=["GET"])
 def fetch_running_vnfs(instance_id=None):
-    vnf_object = VnsfoVnsf()
+    vnf_object = OSMInterfaceVNF()
     return HttpResponse.json(
         HttpCode.OK, vnf_object.get_vnfr_running(instance_id))
 
 
-@so_views.route(endpoints.VNSF_VNSF_TENANT, methods=["GET"])
+#@so_views.route(endpoints.VNSF_VNSF_TENANT, methods=["GET"])
 def fetch_running_vnfs_per_tenant(tenant_id):
     SOException.not_implemented()
 
 
-@so_views.route(endpoints.VNSF_ACTION_EXEC, methods=["POST"])
-@content.expect_json_content
+#@so_views.route(endpoints.VNSF_ACTION_EXEC, methods=["POST"])
+#@content.expect_json_content
 def exec_primitive_on_vnsf():
-    vnf_object = VnsfoVnsf()
+    vnf_object = OSMInterfaceVNF()
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
         SOException.invalid_content_type("Expected: {}".format(exp_ct))

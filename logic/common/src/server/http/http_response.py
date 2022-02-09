@@ -66,6 +66,27 @@ class HttpResponse:
         return Response(status=status_code, response=status_msg,
                         headers=headers)
 
+#    @staticmethod
+#    def infer(data, status: int = HttpCode.OK,
+#              ct_accept: str = None) -> Response:
+#        """
+#        Format data to be output, based on the expected content_type.
+#        """
+#        if ct_accept is None or ct_accept == "*/*":
+#            ct_accept = AllowedContentTypes.CONTENT_TYPE_JSON.value
+#        expected_ct = [
+#                AllowedContentTypes.CONTENT_TYPE_JSON.value,
+#                AllowedContentTypes.CONTENT_TYPE_YAML.value]
+#        accept_type_is_expected = any([ct for ct in map(
+#            lambda x: ct_accept in x, expected_ct)])
+#        if not accept_type_is_expected:
+#            return error_on_unallowed_method("Content-Type not expected")
+#        # Output will be JSON by default
+#        output = json.dumps(data)
+#        if "yaml" in ct_accept:
+#            output = yaml.dump(data, allow_unicode=True)
+#        return Response(output, status=status, mimetype=ct_accept)
+
     @staticmethod
     def infer(data, status: int = HttpCode.OK,
               ct_accept: str = None) -> Response:
@@ -75,15 +96,26 @@ class HttpResponse:
         if ct_accept is None or ct_accept == "*/*":
             ct_accept = AllowedContentTypes.CONTENT_TYPE_JSON.value
         expected_ct = [
+#                AllowedContentTypes.CONTENT_TYPE_APPGZIP.value,
                 AllowedContentTypes.CONTENT_TYPE_JSON.value,
-                AllowedContentTypes.CONTENT_TYPE_YAML.value]
-        content_type_is_expected = any([ct for ct in map(
-            lambda x: ct_accept in x, expected_ct)])
-        if not content_type_is_expected:
+#                AllowedContentTypes.CONTENT_TYPE_MULTI.value,
+                AllowedContentTypes.CONTENT_TYPE_YAML.value,
+                AllowedContentTypes.CONTENT_TYPE_TEXT.value]
+        print("ct_accept............................................={}".format(ct_accept))
+        accept_type_is_expected = any(map(
+            lambda x: x in ct_accept, expected_ct))
+        print("INFER -> ct_accept: " + str(ct_accept))
+        print("INFER -> expected_ct: " + str(expected_ct))
+        print("accept_type_is_expected: " + str(accept_type_is_expected))
+        if not accept_type_is_expected:
+            print("INFER -> RAISING ERROR!")
             return error_on_unallowed_method(
-                "Content-Type not expected: {}".format(ct_accept))
+                "Accept-Type not expected: {}".format(ct_accept))
         # Output will be JSON by default
         output = json.dumps(data)
         if "yaml" in ct_accept:
             output = yaml.dump(data, allow_unicode=True)
+        r1 = Response(output, status=status, mimetype=ct_accept)
+        print("-----------------r1----------")
+        print(r1.__dict__)
         return Response(output, status=status, mimetype=ct_accept)

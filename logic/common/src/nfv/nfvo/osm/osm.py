@@ -16,9 +16,11 @@
 # limitations under the License.
 
 from common.config.parser.fullparser import FullConfParser
-from common.core import download
 from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
+from common.server.http.http_code import HttpCode
+from common.utils import download
+# TODO: review the following module
 from common.utils.osm_response_parsing import OSMResponseParsing
 # from common.db.manager import DBManager
 from common.nfv.nfvo.osm.exception import OSMException, OSMPackageConflict,\
@@ -148,9 +150,9 @@ class OSM():
     # Packages
 
     @check_authorization
-    def get_ns_descriptor_id(self, ns_filter):
+    def get_ns_descriptor(self, ns_filter):
         """
-        Given a name (or ID), returns the NSD ID.
+        Given a name (or ID), returns the NSD.
         """
         response = requests.get(self.ns_descriptors_url,
                                 headers=self.headers,
@@ -160,13 +162,13 @@ class OSM():
             if nsd.get("name", None) == ns_filter or\
                     nsd.get("product-name", None) == ns_filter or\
                     nsd.get("_id", None) == ns_filter:
-                return nsd.get("_id")
+                return nsd
         return
 
     @check_authorization
-    def get_vnf_descriptor_id(self, vnf_filter):
+    def get_vnf_descriptor(self, vnf_filter):
         """
-        Given a name (or ID), returns the VNFD ID.
+        Given a name (or ID), returns the VNFD.
         """
         response = requests.get(self.vnf_descriptors_url,
                                 headers=self.headers,
@@ -176,28 +178,31 @@ class OSM():
             if vnfd.get("name", None) == vnf_filter or\
                     vnfd.get("product-name", None) == vnf_filter or\
                     vnfd.get("_id", None) == vnf_filter:
-                return vnfd.get("_id")
+                return vnfd
         return
 
+    # Called externally
     @check_authorization
     def get_ns_descriptors(self, ns_filter=None):
         response = requests.get(self.ns_descriptors_url,
                                 headers=self.headers,
                                 verify=False)
         nsds = json.loads(response.text)
-#        if ns_name:
-#            return {"ns": [
-#                self.filter_output_nsd(x) for x in nsds
-#                if x["name"] == ns_name]
-#                }
-#        return {"ns": [self.filter_output_nsd(x) for x in nsds]}
         result = nsds
-        if ns_filter is not None:
-            result = [
-                    x for x in nsds if x.get("name") == ns_filter or
-                    x.get("_id") == ns_filter]
-        return {"ns": list(map(lambda x: self.filter_output_nsd(x), result))}
+        if ns_filter is not None and not isinstance(ns_filter, list):
+            nsd = self.get_ns_descriptor(ns_filter)
+            if nsd is None:
+                raise OSMPackageError(
+                    {"error": "Package {} does not exist".format(ns_filter),
+                     "status": HttpCode.NOT_FOUND})
+            result = nsd
+        if not isinstance(result, list):
+            result = [result]
+        return {
+            "ns": list(map(lambda x: self.filter_output_nsd(x), result)),
+            "status": HttpCode.OK}
 
+    # Called externally
     @check_authorization
     def get_vnf_descriptors(self, vnf_filter=None):
         response = requests.get(self.vnf_descriptors_url,
@@ -205,11 +210,18 @@ class OSM():
                                 verify=False)
         vnfs = json.loads(response.text)
         result = vnfs
-        if vnf_filter is not None:
-            result = [
-                    x for x in vnfs if x.get("product-name") == vnf_filter or
-                    x.get("_id") == vnf_filter]
-        return {"vnf": list(map(lambda x: self.filter_output_vnfd(x), result))}
+        if vnf_filter is not None and not isinstance(vnf_filter, list):
+            vnfd = self.get_vnf_descriptor(vnf_filter)
+            if vnfd is None:
+                raise OSMPackageError(
+                    {"error": "Package {} does not exist".format(vnf_filter),
+                     "status": HttpCode.NOT_FOUND})
+            result = vnfd
+        if not isinstance(result, list):
+            result = [result]
+        return {
+            "vnf": list(map(lambda x: self.filter_output_vnfd(x), result)),
+            "status": HttpCode.OK}
 
     def filter_output_nsd(self, nsd):
         out_nsd = {}
@@ -275,6 +287,7 @@ class OSM():
                                 verify=False)
         return json.loads(response.text)
 
+    # Called externally
     @check_authorization
     def upload_package(self, bin_file, url):
         # Note that using requests produces a 401 error
@@ -284,8 +297,20 @@ class OSM():
         headers = self.headers
         headers.update({"Content-Type": "application/gzip"})
         hash_md5 = hashlib.md5()
+        pkg_chunk = ""
         for chunk in iter(lambda: bin_file.read(4096), b""):
+            # Copy the first part for later processing
+            if len(pkg_chunk) == 0:
+                pkg_chunk += str(chunk)
             hash_md5.update(chunk)
+        # # Attempt to retrieve name for package
+        # # package_name = bin_file.filename
+        # try:
+        #     idx_r = pkg_chunk.find(".tar")
+        #     idx_l = pkg_chunk[:idx_r].rfind("\\x")
+        #     # package_name = pkg_chunk[idx_l+4:idx_r]
+        # except Exception as e:
+        #     package_name = ""
         md5sum = hash_md5.hexdigest()
         bin_file.seek(0)
         full_file = bin_file.read()
@@ -307,15 +332,26 @@ class OSM():
         curl_cmd.setopt(pycurl.POSTFIELDS, postdata)
         curl_cmd.perform()
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
-        if http_code >= 400 and http_code < 500:
-            raise SOException("Authentication issue")
-        if http_code == 500:
-            raise OSMPackageError
         output = json.loads(data.getvalue().decode())
+        if http_code == 401:
+            raise SOException(
+                    {"error": "Authentication issue",
+                     "status": http_code})
         if http_code == 409:
-            raise OSMPackageConflict
-        return {"package": bin_file.filename,
-                "transaction_id": output["id"]}
+            raise OSMPackageConflict(
+                    {"error": output.get("detail"),
+                     "status": http_code})
+        if http_code == 422:
+            raise OSMPackageError(
+                    {"error": output.get("detail"),
+                     "status": http_code})
+        if http_code >= 500:
+            raise OSMPackageError(
+                    {"error": "Internal server error",
+                     "status": http_code})
+        return {
+            "id": output["id"],
+            "status": HttpCode.ACCEPTED}
 
     def upload_vnfd_package(self, bin_file):
         # Endpoint: "/vnfpkgm/v1/vnf_packages_content"
@@ -324,6 +360,22 @@ class OSM():
     def upload_nsd_package(self, bin_file):
         # Endpoint: "/nsd/v1/ns_descriptors_content"
         return self.upload_package(bin_file, self.nsd_package_url)
+
+    def guess_descriptor_type(self, package_name):
+        res = {}
+        descriptor_id = None
+        descriptor = self.get_vnf_descriptor(package_name)
+        if descriptor is not None:
+            descriptor_id = descriptor.get("_id")
+            res.update({"id": descriptor_id, "type": "vnf"})
+        if descriptor_id is None:
+            descriptor = self.get_ns_descriptor(package_name)
+            if descriptor is not None:
+                descriptor_id = descriptor.get("_id")
+            res.update({"id": descriptor_id, "type": "ns"})
+        if "id" in res.keys() and res.get("id") is None:
+            res = {}
+        return res
 
     def guess_package_type(self, bin_file):
         full_file = bin_file.read()
@@ -382,14 +434,13 @@ class OSM():
         return output
 
     def delete_package(self, package_name):
-        descriptor_id = self.get_vnf_descriptor_id(package_name)
-        descriptor_type = "vnf"
-        if not descriptor_id:
-            descriptor_id = self.get_ns_descriptor_id(package_name)
-            descriptor_type = "ns"
+        desc_data = self.guess_descriptor_type(package_name)
+        descriptor_id = desc_data.get("id")
+        descriptor_type = desc_data.get("type")
         if descriptor_id is None:
-            raise OSMPackageNotFound(
-                    "Package {} does not exist".format(package_name))
+            raise OSMPackageNotFound({
+                    "error": "Package {} does not exist".format(package_name),
+                    "status": 409})
         if descriptor_type == "ns":
             del_url = "{0}/{1}".format(
                 self.ns_descriptors_url,
@@ -404,14 +455,19 @@ class OSM():
         response = requests.delete("{0}".format(del_url),
                                    headers=self.headers,
                                    verify=False)
-        if response.status_code in (200, 201, 202, 204):
-            return {"package": package_name, "id": descriptor_id}
+        if response.status_code >= 200 and response.status_code < 300:
+            return {
+                "name": package_name, "id": descriptor_id,
+                "status": response.status_code}
         elif response.status_code == 409:
-            res_details = OSMResponseParsing.parse_failed(response)
-            raise OSMPackageConflict(res_details)
+            parsed_error, status = OSMResponseParsing.parse_error_msg(response)
+            parsed_error = parsed_error.get("detail", parsed_error)
+            raise OSMPackageConflict({"error": parsed_error, "status": status})
         else:
             res_details = OSMResponseParsing.parse_failed(response)
-            raise OSMException(res_details)
+            raise OSMException({
+                    "error": str(res_details),
+                    "status": HttpCode.INTERNAL_ERROR})
 
     # Running instances
 
@@ -505,7 +561,7 @@ class OSM():
         vim_id = inst_md.get("vim-id")
         nsd_id = inst_md.get("ns-id", None)
         if not nsd_id:
-            nsd_id = self.get_ns_descriptor_id(inst_md["ns-name"])
+            nsd_id = self.get_ns_descriptor(inst_md["ns-name"]).get("_id")
         LOGGER.info("VIM ID = {0}".format(vim_id))
         ns_data = {"nsdId": nsd_id,
                    "nsName": inst_md["instance-name"],
@@ -710,19 +766,19 @@ class OSM():
         out_vnfi["ns-name"] = self.get_ns_instance_name(out_vnfi["ns_id"])
         return out_vnfi
 
-    @check_authorization
-    def get_vnf_descriptor(self, vnf_name):
-        url = "{0}?name={1}".format(
-            self.vnf_descriptors_url, vnf_name)
-        response = requests.get(url,
-                                headers=self.headers,
-                                verify=False)
-        vnfds = json.loads(response.text)
-        target_vnfd = None
-        for vnfd in vnfds:
-            if vnfd["name"] == vnf_name:
-                target_vnfd = vnfd
-        return target_vnfd
+#    @check_authorization
+#    def get_vnf_descriptor(self, vnf_name):
+#        url = "{0}?name={1}".format(
+#            self.vnf_descriptors_url, vnf_name)
+#        response = requests.get(url,
+#                                headers=self.headers,
+#                                verify=False)
+#        vnfds = json.loads(response.text)
+#        target_vnfd = None
+#        for vnfd in vnfds:
+#            if vnfd["name"] == vnf_name:
+#                target_vnfd = vnfd
+#        return target_vnfd
 
     @check_authorization
     def get_vim_account(self, vim_account_id):

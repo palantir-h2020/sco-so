@@ -60,10 +60,12 @@ function docker_install() {
 }
 
 function docker_create_networks() {
-  declare -a docker_preexisting_networks=("so-core" "so-db")
-  for docker_network in "${docker_preexisting_networks[@]}"; do
-      docker network create ${docker_network}
-  done
+    declare -a docker_preexisting_networks=("so-core" "so-db")
+    for docker_network in "${docker_preexisting_networks[@]}"; do
+        if [ ! "$(docker network ls | grep ${docker_network})" ]; then
+            docker network create ${docker_network}
+        fi
+    done
 }
 
 function copy_replace_files() {
@@ -143,11 +145,16 @@ function deploy_modules() {
     # $module: module name iterated from all modules
     for module in ${PWD}/../logic/modules/*; do
         modl_base=$(basename $module)
+	modl_cont="so-${modl_base}"
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
 	    if [ -d ${module} ]; then
                 title_info "Deploying module: ${modl_base}"
-                setup_modl_deploy_folder "${module}" "${MODULE}"
-		# Reset the flag that indicates a module should be skipped
+	        if [ "$(docker ps -a | grep ${modl_cont})" ]; then
+                    text_warning "Module: ${modl_base} already deployed"
+                else
+                    setup_modl_deploy_folder "${module}" "${MODULE}"
+                fi
+                # Reset the flag that indicates a module should be skipped
 		MODULE_SKIP=0
 	    fi
         fi
