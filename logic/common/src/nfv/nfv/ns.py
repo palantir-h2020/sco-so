@@ -16,13 +16,8 @@
 # limitations under the License.
 
 # from common.db.models.infra.node import Node as NodeModel
-from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
-from common.nfv.nfvo.osm.exception import OSMFailedInstantiation
 from common.nfv.nfvo.osm.osm_r10 import OSMR10
-from flask import current_app
-# import threading
-import time
 
 LOGGER = setup_custom_logger(__name__)
 
@@ -31,14 +26,17 @@ class OSMInterfaceNS:
 
     def __init__(self, release=None):
         try:
-            self.orchestrator = globals().get("OSMR{}".format(release), None)
-            if callable(self.orchestrator):
-                self.orchestrator = self.orchestrator()
+            if release is not None:
+                self.orchestrator = globals().get("OSMR{}".format(release),
+                                                  None)
+                if callable(self.orchestrator):
+                    self.orchestrator = self.orchestrator()
             else:
                 self.orchestrator = OSMR10()
         except Exception:
             raise Exception(
-                "Cannot create instance of OSMR{}".format(release))
+                "Cannot create instance of OSMR{}. Check the constructor."
+                .format(release))
 
     def _select_args(self, args_list: list) -> str:
         if not isinstance(args_list, list):
@@ -66,132 +64,19 @@ class OSMInterfaceNS:
     def get_nsr_running(self, instance_id=None):
         return self.orchestrator.get_ns_instances(instance_id)
 
-    def monitor_deployment(self, instantiation_data, app, target_status=None):
-        # FIXME reduce clutter w.r.t. osm.py module!
-        LOGGER.info("Monitoring deployment of instance: {0}".format(
-            instantiation_data["instance-id"]))
-        # FIXME
-        # timeout = self.monitoring_timeout
-        timeout = 60
-        vdus_registered = False
-        nss = None
-        if target_status is None:
-            target_status = self.monitoring_target_status
-        while not vdus_registered:
-            # FIXME
-            self.monitoring_interval = 1
-            time.sleep(self.monitoring_interval)
-            nss = self.orchestrator.get_ns_instances(
-                instantiation_data["instance-id"])
-            if timeout < 0:
-                LOGGER.info("Timeout reached, aborting")
-                break
-            if len(nss["ns"]) < 1:
-                LOGGER.info("No instance found, aborting thread")
-                break
-            operational_status = nss["ns"][0].get("operational-status", "")
-            config_status = nss["ns"][0].get("config-status", "")
-            LOGGER.info("> Operational status = {}".format(operational_status))
-            LOGGER.info("> Config status = {}\n".format(config_status))
-            # TODO improve error handling
-            if operational_status == "failed" or config_status == "failed":
-                status_summary = "Operational status: {0}, config status: {1}"\
-                    .format(
-                        operational_status, config_status
-                    )
-                LOGGER.info("Instance failed, aborting")
-                LOGGER.info("const-vnfs")
-                LOGGER.info(nss["ns"][0]["constituent-vnf-instances"])
-                for const_vnf in nss["ns"][0]["constituent-vnf-instances"]:
-                    LOGGER.info("const-vnf")
-                    LOGGER.info(const_vnf)
-                    if const_vnf["operational-status"].lower() == "vim_error":
-                        LOGGER.info("inside")
-                        SOException.internal_error(
-                            "Error in the infrastructure. " +
-                            "Details={}".format(status_summary))
-                # SOException.conflict_from_client(operational_status)
-                SOException.internal_error(
-                    "Cannot instantiate NS. Details={}".format(status_summary))
-            if operational_status == target_status and \
-               "constituent-vn-instances" in nss["ns"][0].keys():
-                LOGGER.info("Network Service Deployed")
-                LOGGER.info("Constituent VNF Instance data")
-                if len(nss["ns"]) == 0:
-                    # No VDUs, returning
-                    return
-                # for vnfr in nss["ns"][0]["constituent-vnf-instances"]:
-                #     vnfr_name = vnfr["vnfr-name"]
-                #     vdu_ip = vnfr["ip"]
-                #     vnfr_id = vnfr["vnfr-id"]
-                if "authentication" not in instantiation_data:
-                    instantiation_data["authentication"] = {
-                        "vnf-user": self.orchestrator.vnf_user,
-                        "vnf-key": self.orchestrator.vnf_key
-                    }
-                # app.mongo.store_vdu(vnfr_name, vdu_ip,
-                #                     instantiation_data["isolation_policy"],
-                #                     instantiation_data["termination_policy"],
-                #                     instantiation_data["authentication"],
-                #                     instantiation_data["analysis_type"],
-                #                     instantiation_data["pcr0"],
-                #                     instantiation_data["distribution"],
-                #                     instantiation_data["driver"],
-                #                     instantiation_data["instance_id"],
-                #                     vnfr_id)
-            timeout -= self.monitoring_interval
-            # LOGGER.info("Obtained list of NSs={}".format(nss))
-
-    # @content.on_mock(ns_m().post_nsr_instantiate_mock)
     def instantiate_ns(self, inst_md):
-        # Async
-        # return self.orchestrator.post_ns_instance(inst_md)
-        # Sync
-        # TODO Create proper model, then enforce with pydantic
-        """
-        Required structure (inst_md):
-        {
-            "ns-name": "<name for the NS package>",
-            "instance-name": "<name for the NS instance>",
-            "vim-id": "<UUID of the VIM>"
-        }
-        Optional structure (inst_md):
-        {
-            "ns-id": "<UUID of the NS package>"
-        }
-        """
-        nsi_data = self.orchestrator.post_ns_instance(inst_md)
-        try:
-            # FIXME
-            self.monitoring_target_status = "running"
-            self.monitor_deployment(nsi_data,
-                                    current_app._get_current_object(),
-                                    self.monitoring_target_status)
-            # Use in case of async
-            # t = threading.Thread(target=self.monitor_deployment,
-            #                      args=(nsi_data,
-            #                            current_app._get_current_object(),
-            #                            self.monitoring_target_status))
-            # t.start()
-        except OSMFailedInstantiation as service_instance_failure:
-            nsi_data["result"] = "failure"
-            nsi_data["error-response"] = {
-                "msg": service_instance_failure.msg,
-                "instance-id": nsi_data["instance-id"]
-                }
-            nsi_data["status_code"] = \
-                service_instance_failure.status_code
-        return nsi_data
+        return self.orchestrator.create_ns_instance(inst_md)
 
-    # @content.on_mock(ns_m().delete_nsr_mock)
-    def delete_ns(self, instance_id):
-        # TODO: recover this information in the orchestrator's DB?
-        # nodes = NodeModel.objects(instance_id=instance_id)
+    def delete_ns(self, nsi_id, force=False):
+        # TODO: recover this information in the orchestrator's DB
+        # nodes = NodeModel.objects(instance_id=nsi_id)
         # for node in nodes:
         #     LOGGER.info(node.host_name)
         #     node.delete()
-        return self.orchestrator.delete_ns_instance(instance_id)
+        return self.orchestrator.delete_ns_instance(nsi_id, force)
 
-    def fetch_config_nss(self):
-        catalog = self.get_nsr_config()
-        return catalog
+    def fetch_actions_in_ns(self, nsi_id):
+        return self.orchestrator.fetch_actions_data(nsi_id)
+
+    def apply_action(self, nsi_id, params_actions):
+        return self.orchestrator.apply_action(nsi_id, params_actions)

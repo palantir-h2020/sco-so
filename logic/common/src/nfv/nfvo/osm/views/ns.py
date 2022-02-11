@@ -18,7 +18,6 @@
 from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from common.nfv.nfv.ns import OSMInterfaceNS
-from common.nfv.nfvo.osm.endpoints import NfvoEndpoints as endpoints
 from common.server.http import content
 from common.server.http.http_code import HttpCode
 from common.server.http.http_response import HttpResponse
@@ -31,6 +30,8 @@ LOGGER = setup_custom_logger(__name__)
 so_views = Blueprint("so_ns_views", __name__)
 ns_object = OSMInterfaceNS()
 
+
+# TODO REMOVE
 
 # Running instances
 
@@ -49,8 +50,6 @@ def instantiate_ns_request_check():
     return instantiation_data
 
 
-#@so_views.route(endpoints.NS_INSTANTIATE, methods=["POST"])
-#@content.expect_json_content
 def instantiate_ns():
     try:
         instantiate_ns_request_check()
@@ -58,24 +57,6 @@ def instantiate_ns():
         return HttpResponse.json(
             e.status_code, e.status_msg)
     result = ns_object.instantiate_ns(request.json)
-    if result.get("result", "") == "success":
-        return HttpResponse.json(HttpCode.OK, result)
-    else:
-        return HttpResponse.json(result["error_response"].status_code,
-                                 result["error_response"].text)
-
-
-#@so_views.route(endpoints.NS_R_NSS, methods=["GET"])
-#@so_views.route(endpoints.NS_R_NSS_ID, methods=["GET"])
-def fetch_running_nss(instance_id=None):
-    nss = ns_object.get_nsr_running(instance_id)
-    return HttpResponse.json(HttpCode.OK, nss)
-
-
-#@so_views.route(endpoints.NS_R_NSS)
-#@so_views.route(endpoints.NS_R_NSS_ID, methods=["DELETE"])
-def delete_ns(instance_id=None):
-    result = ns_object.delete_ns(instance_id)
     if result.get("result", "") == "success":
         return HttpResponse.json(HttpCode.OK, result)
     else:

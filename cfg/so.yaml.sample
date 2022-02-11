@@ -1,3 +1,4 @@
+# OSM configuration
 osm:
   nbi:
     protocol: http
@@ -5,7 +6,29 @@ osm:
     port: 80
     username: admin
     password: admin
+  vim:
+    fallback: 74990d4d-e107-47e8-a2fc-30e1f4b206ac
 
+# Timings used to check or wait for (async) operations
+timings:
+  # Re-attempt every X seconds
+  interval: 1
+  # Timeout (in seconds) before failing specific requests
+  timeout:
+    default: 60
+    instantiation: 60
+    action: 50
+    scale: 80
+    termination: 30
+    deletion: 80
+
+# Message broker settings
+events:
+  active: true
+  topics:
+    instantiation-ae: ae.register-sc
+
+# Network Function access
 nfs:
   general:
     user: ubuntu

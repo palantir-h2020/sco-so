@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2017-present i2CAT
@@ -66,9 +65,10 @@ class OSMInterfaceVNF:
         return self.orchestrator.exec_action_on_vnf(payload)
 
     def submit_action_request(self,
-                              vnfr_id: str = None, action: str = None,
+                              id: str = None, action: str = None,
                               params: List = list()):
-        payload = {"vnfr-id": vnfr_id,
+        payload = {"vnfr-id": id,
                    "action": action,
                    "params": params}
+        print("OSMInterfaceVNF - payload={}".format(payload))
         return self.exec_action_on_vnf(payload)

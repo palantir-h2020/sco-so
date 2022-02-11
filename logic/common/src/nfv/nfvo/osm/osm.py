@@ -16,22 +16,23 @@
 # limitations under the License.
 
 from common.config.parser.fullparser import FullConfParser
-from common.exception.exception import SOException
 from common.log.log import setup_custom_logger
 from common.server.http.http_code import HttpCode
 from common.utils import download
-# TODO: review the following module
 from common.utils.osm_response_parsing import OSMResponseParsing
+from common.utils.time_handling import TimeHandling
 # from common.db.manager import DBManager
-from common.nfv.nfvo.osm.exception import OSMException, OSMPackageConflict,\
-    OSMPackageError, OSMPackageNotFound, OSMUnknownPackageType,\
-    OSMVNFKeyNotFound, OSMInstanceNotFound
+from common.nfv.nfvo.osm import exception as osm_exception
 from flask import current_app
+from hashlib import md5 as hash_md5
 from io import BytesIO
 from mimetypes import MimeTypes
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from time import sleep
+from uuid import uuid4
 from werkzeug.datastructures import FileStorage
-import hashlib
+from yaml import dump as yaml_dump, load as yaml_load,\
+    FullLoader as yaml_full_loader
 import json
 import os
 import pycurl
@@ -39,9 +40,7 @@ import requests
 import shutil
 import tarfile
 import threading
-import time
 import urllib3
-import yaml
 
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -56,7 +55,7 @@ def check_authorization(f):
     Decorator to validate authorization prior API call.
     """
     def wrapper(*args):
-        response = requests.get(args[0].ns_descriptors_url,
+        response = requests.get(args[0].url_token,
                                 headers=args[0].headers,
                                 verify=False)
         if response.status_code in (401, 500):
@@ -75,15 +74,24 @@ class OSM():
     def __init__(self):
         self.config = FullConfParser()
         self.nfvo_category = self.config.get("so.yaml")
-        self._read_cfg_osm_nbi(self.nfvo_category.get("osm"))
+        self.osm_section = self.nfvo_category.get("osm")
+        self._read_cfg_osm(self.osm_section)
         self._create_ep_osm()
         self._create_session()
-        # FIXME validate which is the best value, add to cfg
-        self.monitoring_interval = 1
-        self.monitoring_timeout = 60
+        self.mon_section = self.nfvo_category.get("monitoring")
+        self._read_cfg_monitoring(self.mon_section)
+        # self.monitoring_interval = 1
+        # self.monitoring_timeout = 60
         self._read_cfg_vnfs(self.nfvo_category.get("nfs"))
+        # Definition of expected/target status upon operations
+        self.deployment_expected_status = "running"
+        self.deletion_expected_status = "terminated"
+        self.force_deletion_expected_status = "failed"
+        # self.osm_builtin_actions = ["initiate", "scale",
+        #    "terminate", "update"]
+        self.osm_builtin_actions = ["instantiate", "scale", "terminate"]
 
-    def _read_cfg_osm_nbi(self, cfg_section: str):
+    def _read_cfg_osm(self, cfg_section: dict):
         cfg_osm_nbi = cfg_section.get("nbi")
         self.base_url = "{0}://{1}:{2}".format(
             cfg_osm_nbi.get("protocol"),
@@ -91,8 +99,14 @@ class OSM():
             cfg_osm_nbi.get("port"))
         self.username = cfg_osm_nbi.get("username")
         self.password = cfg_osm_nbi.get("password")
+        cfg_osm_vim = cfg_section.get("vim")
+        self.vim_fallback = cfg_osm_vim.get("fallback")
 
-    def _read_cfg_vnfs(self, cfg_section: str):
+    def _read_cfg_monitoring(self, cfg_section: dict):
+        self.monitoring_interval = cfg_section.get("interval")
+        self.monitoring_timeout = cfg_section.get("timeout")
+
+    def _read_cfg_vnfs(self, cfg_section: dict):
         cfg_vnfs_gen = cfg_section.get("general")
         self.vnf_user = cfg_vnfs_gen.get("user")
         try:
@@ -102,30 +116,30 @@ class OSM():
                   key_path, cfg_vnfs_gen.get("key"))) as fhandle:
                 self.vnf_key = fhandle.read()
         except Exception as e:
-            raise OSMVNFKeyNotFound(e)
+            raise osm_exception.OSMVNFKeyNotFound(e)
 
     def _create_ep_osm(self):
-        self.token_url = "{0}/osm/admin/v1/tokens".format(self.base_url)
-        self.ns_descriptors_url = "{0}/osm/nsd/v1/ns_descriptors".\
-                                  format(self.base_url)
-        self.ns_descriptors_content_url = \
-            "{0}/osm/nsd/v1/ns_descriptors_content".\
-            format(self.base_url)
-        self.vnf_descriptors_url = "{0}/osm/vnfpkgm/v1/vnf_packages".\
-                                   format(self.base_url)
-        self.vnf_instances_url = "{0}/osm/nslcm/v1/vnfrs".\
-                                 format(self.base_url)
-        self.instantiation_url = "{0}/osm/nslcm/v1/ns_instances".\
-                                 format(self.base_url)
-        self.vim_accounts_url = "{0}/osm/admin/v1/vim_accounts".\
-                                format(self.base_url)
-        self.exec_action_url = \
-            "{0}/osm/nslcm/v1/ns_instances/<ns_instance_id>/action".\
-            format(self.base_url)
-        self.vnfd_package_url = "{0}/osm/vnfpkgm/v1/vnf_packages_content".\
-                                format(self.base_url)
-        self.nsd_package_url = "{0}/osm/nsd/v1/ns_descriptors_content".\
-                               format(self.base_url)
+        def _ep(url):
+            # Note: initial "/" shall be provided in "url"
+            return "{0}/osm{1}".format(self.base_url, url)
+
+        # Authentication
+        self.url_token = _ep("/admin/v1/tokens")
+        # Package descriptors (NSD, VNFD)
+        self.url_nsd_list = _ep("/nsd/v1/ns_descriptors")
+        self.url_nsd_detail = _ep("/nsd/v1/ns_descriptors_content")
+        self.url_vnfd_list = _ep("/vnfpkgm/v1/vnf_packages")
+        self.url_vnfd_detail = _ep("/vnfpkgm/v1/vnf_packages_content")
+        # Running instances (NSI, VNFI) and actions (on NSs)
+        self.url_nsi_list = _ep("/nslcm/v1/ns_instances")
+        self.url_nsi_detail = _ep("/nslcm/v1/ns_instances_content")
+        self.url_nsd_action = _ep("/nslcm/v1/ns_instances/{}/action")
+        # Actions on running instances (NSI)
+        self.url_nsi_action_detail = _ep("/nslcm/v1/ns_lcm_op_occs")
+        # Records of running instances (NSR, VNFR)
+        self.url_vnfr_detail = _ep("/nslcm/v1/vnfrs")
+        # Infrastructure
+        self.url_vim_list = _ep("/admin/v1/vim_accounts")
 
     # Authentication
 
@@ -138,7 +152,7 @@ class OSM():
             self.username = username
         if password is not None:
             self.password = password
-        response = requests.post(self.token_url,
+        response = requests.post(self.url_token,
                                  json={"username": self.username,
                                        "password": self.password},
                                  headers=self.headers,
@@ -154,7 +168,7 @@ class OSM():
         """
         Given a name (or ID), returns the NSD.
         """
-        response = requests.get(self.ns_descriptors_url,
+        response = requests.get(self.url_nsd_list,
                                 headers=self.headers,
                                 verify=False)
         nsds = json.loads(response.text)
@@ -170,7 +184,7 @@ class OSM():
         """
         Given a name (or ID), returns the VNFD.
         """
-        response = requests.get(self.vnf_descriptors_url,
+        response = requests.get(self.url_vnfd_list,
                                 headers=self.headers,
                                 verify=False)
         vnfds = json.loads(response.text)
@@ -184,7 +198,7 @@ class OSM():
     # Called externally
     @check_authorization
     def get_ns_descriptors(self, ns_filter=None):
-        response = requests.get(self.ns_descriptors_url,
+        response = requests.get(self.url_nsd_list,
                                 headers=self.headers,
                                 verify=False)
         nsds = json.loads(response.text)
@@ -192,7 +206,7 @@ class OSM():
         if ns_filter is not None and not isinstance(ns_filter, list):
             nsd = self.get_ns_descriptor(ns_filter)
             if nsd is None:
-                raise OSMPackageError(
+                raise osm_exception.OSMPackageError(
                     {"error": "Package {} does not exist".format(ns_filter),
                      "status": HttpCode.NOT_FOUND})
             result = nsd
@@ -205,7 +219,7 @@ class OSM():
     # Called externally
     @check_authorization
     def get_vnf_descriptors(self, vnf_filter=None):
-        response = requests.get(self.vnf_descriptors_url,
+        response = requests.get(self.url_vnfd_list,
                                 headers=self.headers,
                                 verify=False)
         vnfs = json.loads(response.text)
@@ -213,7 +227,7 @@ class OSM():
         if vnf_filter is not None and not isinstance(vnf_filter, list):
             vnfd = self.get_vnf_descriptor(vnf_filter)
             if vnfd is None:
-                raise OSMPackageError(
+                raise osm_exception.OSMPackageError(
                     {"error": "Package {} does not exist".format(vnf_filter),
                      "status": HttpCode.NOT_FOUND})
             result = vnfd
@@ -225,12 +239,12 @@ class OSM():
 
     def filter_output_nsd(self, nsd):
         out_nsd = {}
-        out_nsd["name"] = nsd["id"]
-        out_nsd["id"] = nsd["_id"]
-        out_nsd["description"] = nsd["description"]
+        out_nsd["name"] = nsd.get("id")
+        out_nsd["id"] = nsd.get("_id")
+        out_nsd["description"] = nsd.get("description")
         out_nsd["vendor"] = nsd.get("vendor", None)
         out_nsd["version"] = nsd.get("version", None)
-        out_nsd["vnfs"] = nsd["vnfd-id"]
+        out_nsd["vnfs"] = nsd.get("vnfd-id")
         out_nsd["virtual-links"] = [
             x["id"] for x in nsd.get("virtual-link-desc", [])
             ]
@@ -238,44 +252,45 @@ class OSM():
 
     def filter_output_vnfd(self, vnf):
         out_vnfd = {}
-        out_vnfd["name"] = vnf["id"]
-        out_vnfd["id"] = vnf["_id"]
-        out_vnfd["description"] = vnf["description"]
+        out_vnfd["name"] = vnf.get("id")
+        out_vnfd["id"] = vnf.get("_id")
+        out_vnfd["description"] = vnf.get("description")
         out_vnfd["vendor"] = vnf.get("vendor", None)
         out_vnfd["version"] = vnf.get("version", None)
         try:
-            vnf_lcm_ops_cfg = vnf["df"][0]["lcm-operations-configuration"]
-            vnf_lcm_vnf_ops_cfg = vnf_lcm_ops_cfg["operate-vnf-op-config"]
-            vnf_lcm_vnf_ops_day12_cfg = vnf_lcm_vnf_ops_cfg["day1-2"]
+            vnf_lcm_ops_cfg = \
+                    vnf.get("df", [{}])[0]["lcm-operations-configuration"]
+            vnf_lcm_vnf_ops_cfg = vnf_lcm_ops_cfg.get("operate-vnf-op-config")
+            vnf_lcm_vnf_ops_day12_cfg = vnf_lcm_vnf_ops_cfg.get("day1-2")
             day0_prims = [
-                x["name"] for x in
-                vnf_lcm_vnf_ops_day12_cfg[0]["initial-config-primitive"]
+                x.get("name") for x in
+                vnf_lcm_vnf_ops_day12_cfg[0].get("initial-config-primitive")
                 ]
             day12_prims = []
             for day12_prim in vnf_lcm_vnf_ops_day12_cfg:
-                config_prim = day12_prim["config-primitive"][0]
-                day12_prims.append(config_prim["name"])
+                config_prim = day12_prim.get("config-primitive")[0]
+                day12_prims.append(config_prim.get("name"))
             out_vnfd["config-actions"] = {
                 "day0": day0_prims, "day1-2": day12_prims
                 }
         except Exception:
             out_vnfd["config-actions"] = []
         try:
-            vnf_inst_level = vnf["df"][0]["instantiation-level"]
+            vnf_inst_level = vnf.get("df")[0]["instantiation-level"]
             vnf_vdu_struct = vnf_inst_level[0]["vdu-level"][0]
-            out_vnfd["vdus"] = vnf_vdu_struct["number-of-instances"]
+            out_vnfd["vdus"] = vnf_vdu_struct.get("number-of-instances")
         except Exception:
             out_vnfd["vdus"] = 0
         nss = self.get_ns_descriptors()
         for ns in nss["ns"]:
             for cvnf in ns.get("constituent-vnfs", []):
-                if cvnf["vnfd-id-ref"] == vnf["name"]:
-                    out_vnfd["ns-name"] = ns["ns-name"]
+                if cvnf["vnfd-id-ref"] == vnf.get("name"):
+                    out_vnfd["ns-name"] = ns.get("ns-name")
         return out_vnfd
 
     @check_authorization
     def get_ns_descriptors_content(self):
-        response = requests.get(self.ns_descriptors_content_url,
+        response = requests.get(self.url_nsd_detail,
                                 headers=self.headers,
                                 verify=False)
         return json.loads(response.text)
@@ -296,13 +311,13 @@ class OSM():
         requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
         headers = self.headers
         headers.update({"Content-Type": "application/gzip"})
-        hash_md5 = hashlib.md5()
+        hash_md5_res = hash_md5()
         pkg_chunk = ""
         for chunk in iter(lambda: bin_file.read(4096), b""):
             # Copy the first part for later processing
             if len(pkg_chunk) == 0:
                 pkg_chunk += str(chunk)
-            hash_md5.update(chunk)
+            hash_md5_res.update(chunk)
         # # Attempt to retrieve name for package
         # # package_name = bin_file.filename
         # try:
@@ -311,7 +326,7 @@ class OSM():
         #     # package_name = pkg_chunk[idx_l+4:idx_r]
         # except Exception as e:
         #     package_name = ""
-        md5sum = hash_md5.hexdigest()
+        md5sum = hash_md5_res.hexdigest()
         bin_file.seek(0)
         full_file = bin_file.read()
         bin_file.seek(0)
@@ -334,32 +349,32 @@ class OSM():
         http_code = curl_cmd.getinfo(pycurl.HTTP_CODE)
         output = json.loads(data.getvalue().decode())
         if http_code == 401:
-            raise SOException(
+            raise osm_exception.SOException(
                     {"error": "Authentication issue",
                      "status": http_code})
         if http_code == 409:
-            raise OSMPackageConflict(
+            raise osm_exception.OSMPackageConflict(
                     {"error": output.get("detail"),
                      "status": http_code})
         if http_code == 422:
-            raise OSMPackageError(
+            raise osm_exception.OSMPackageError(
                     {"error": output.get("detail"),
                      "status": http_code})
         if http_code >= 500:
-            raise OSMPackageError(
+            raise osm_exception.OSMPackageError(
                     {"error": "Internal server error",
                      "status": http_code})
         return {
-            "id": output["id"],
+            "id": output.get("id"),
             "status": HttpCode.ACCEPTED}
 
     def upload_vnfd_package(self, bin_file):
         # Endpoint: "/vnfpkgm/v1/vnf_packages_content"
-        return self.upload_package(bin_file, self.vnfd_package_url)
+        return self.upload_package(bin_file, self.url_vnfd_detail)
 
     def upload_nsd_package(self, bin_file):
         # Endpoint: "/nsd/v1/ns_descriptors_content"
-        return self.upload_package(bin_file, self.nsd_package_url)
+        return self.upload_package(bin_file, self.url_nsd_detail)
 
     def guess_descriptor_type(self, package_name):
         res = {}
@@ -384,8 +399,8 @@ class OSM():
         for name in tar.getnames():
             if os.path.splitext(name)[-1] == ".yaml":
                 member_file = tar.extractfile(tar.getmember(name))
-                descriptor = yaml.load(
-                        member_file.read(), Loader=yaml.FullLoader)
+                descriptor = yaml_load(
+                        member_file.read(), Loader=yaml_full_loader)
                 if "nsd" in descriptor.keys():
                     return "nsd"
                 if "vnfd" in descriptor.keys():
@@ -398,7 +413,7 @@ class OSM():
             try:
                 pkg_path = download.fetch_content(pkg_path)
             except download.DownloadException:
-                raise OSMPackageNotFound
+                raise osm_exception.OSMPackageNotFound
         return self.onboard_package(pkg_path)
 
     def onboard_package(self, pkg_path):
@@ -425,7 +440,7 @@ class OSM():
             elif ptype == "nsd":
                 output = self.upload_nsd_package(bin_file)
             else:
-                raise OSMUnknownPackageType
+                raise osm_exception.OSMUnknownPackageType
         if fp is not None:
             fp.close()
         if remove_after:
@@ -438,19 +453,19 @@ class OSM():
         descriptor_id = desc_data.get("id")
         descriptor_type = desc_data.get("type")
         if descriptor_id is None:
-            raise OSMPackageNotFound({
+            raise osm_exception.OSMPackageNotFound({
                     "error": "Package {} does not exist".format(package_name),
                     "status": 409})
         if descriptor_type == "ns":
             del_url = "{0}/{1}".format(
-                self.ns_descriptors_url,
+                self.url_nsd_list,
                 descriptor_id)
         elif descriptor_type == "vnf":
             del_url = "{0}/{1}".format(
-                self.vnf_descriptors_url,
+                self.url_vnfd_list,
                 descriptor_id)
         else:
-            raise OSMUnknownPackageType(
+            raise osm_exception.OSMUnknownPackageType(
                     "Package {} with unknown type".format(package_name))
         response = requests.delete("{0}".format(del_url),
                                    headers=self.headers,
@@ -462,50 +477,80 @@ class OSM():
         elif response.status_code == 409:
             parsed_error, status = OSMResponseParsing.parse_error_msg(response)
             parsed_error = parsed_error.get("detail", parsed_error)
-            raise OSMPackageConflict({"error": parsed_error, "status": status})
+            raise osm_exception.OSMPackageConflict(
+                    {"error": parsed_error, "status": status})
         else:
             res_details = OSMResponseParsing.parse_failed(response)
-            raise OSMException({
+            raise osm_exception.OSMException({
                     "error": str(res_details),
                     "status": HttpCode.INTERNAL_ERROR})
 
     # Running instances
 
-    def apply_mspl_action(self, instance_id, inst_md):
-        if ("action" not in inst_md) or ("params" not in inst_md):
+    # Called externally
+    @check_authorization
+    def fetch_actions_data(self, nsi_id: str):
+        actions_ret = {"ns": nsi_id, "actions": []}
+        url_nsi_details = "{}/?nsInstanceId={}".format(
+                              self.url_nsi_action_detail, nsi_id)
+        response = requests.get(url_nsi_details,
+                                headers=self.headers,
+                                verify=False)
+        actions_resp = response.json()
+        actions_ret_list = []
+        for action in actions_resp:
+            action_type = action.get("lcmOperationType")
+            if action_type != "action":
+                action_type = "built-in ({})".format(action_type)
+            action_status = action.get("operationState").lower()
+            action_exec_time = TimeHandling.ms_to_rfc3339(
+                    action.get("startTime"))
+            action_ret = {"id": action.get("_id"),
+                          "start-time": action_exec_time,
+                          "type": action_type,
+                          "params": action.get("operationParams"),
+                          "status": action_status
+                          }
+            if action_status == "failed":
+                action_ret.update({
+                    "error": action.get("errorMessage")})
+            actions_ret_list.append(action_ret)
+        actions_ret.update({"actions": actions_ret_list})
+        return {"status": HttpCode.OK, **actions_ret}
+
+    def apply_action(self, nsi_id, inst_md):
+        if "ns-action-name" not in inst_md.keys():
             return
         target_status = None
-        # FIXME
-        target_status = "running"
-        if "target_status" in inst_md:
-            target_status = inst_md["target_status"]
+        if self.deployment_expected_status in inst_md:
+            target_status = inst_md.get("target_status")
         # Passing also current_app._get_current_object() (flask global context)
-        # # FIXME adapt to FastAPI
-        print("[DEBUG] Launching thread to monitor status")
-        t = threading.Thread(target=self.deployment_monitor_thread,
-                             args=(instance_id,
-                                   inst_md["action"],
-                                   inst_md["params"],
+        LOGGER.debug("[DEBUG] Launching thread to monitor status " +
+                     "prior to applying action")
+        t = threading.Thread(target=self.monitor_ns_deployment,
+                             args=(nsi_id,
+                                   inst_md.get("ns-action-name"),
+                                   inst_md.get("ns-action-params"),
                                    current_app._get_current_object(),
                                    target_status))
         t.start()
+        return {"status": HttpCode.ACCEPTED, "id": nsi_id, **inst_md}
 
-    def deployment_monitor_thread(self, instance_id, action,
-                                  params, app, target_status=None):
+    def monitor_ns_deployment(self, nsi_id, action_name, action_params,
+                              app, target_status=None):
         timeout = self.monitoring_timeout
         action_submitted = False
-        # FIXME
-        target_status = "running"
-        # if target_status is None:
-        #     target_status = self.monitoring_target_status
+        # A name for the action must be provided at least
+        if action_name is None:
+            return action_submitted
         while not action_submitted:
-            time.sleep(self.monitoring_interval)
+            sleep(self.monitoring_interval)
             timeout = timeout-self.monitoring_interval
-            # print("Checking {0} {1} {2}".format(instance_id, action, params))
+            # print("Checking {0} {1} {2}".format(nsi_id, action, params))
             try:
-                nss = self.get_ns_instances(instance_id)
+                nss = self.get_ns_instances(nsi_id)
                 LOGGER.debug("Monitored list of NSs={}".format(nss))
-            except OSMException:
+            except osm_exception.OSMException:
                 LOGGER.info("No instance found, aborting configuration")
                 break
             if timeout < 0:
@@ -514,140 +559,168 @@ class OSM():
             if not nss:
                 LOGGER.info("No instance found, aborting thread")
                 break
-            operational_status = nss.get("operational-status", "")
-            LOGGER.debug("operational_status = {}".format(operational_status))
+            # operational_status = nss.get("operational-status", "")
+            operational_status = nss.get("ns")[0].get("status")\
+                                    .get("operational")
+            LOGGER.debug("Operational status: {0} ...".format(
+                operational_status))
             if operational_status == "failed":
                 LOGGER.info("Instance failed, aborting")
                 break
-            if operational_status == target_status and \
-               "constituent-vnfr-ref" in nss:
-                # Perform action on all vnf instances?
-                for vnf_instance in nss["constituent-vnfr-ref"]:
-                    # exec_tmpl = self.fill_vnf_action_request_encoded(
-                    #     vnf_instance["vnfr_id"], action, params)
-                    payload = {"action": action,
-                               "params": params}
-                    output = self.exec_action_on_vnf(payload, instance_id)
-                    output = "{}"
-                    if action is not None:
-                        app.mongo.store_vnf_action(vnf_instance,
-                                                   action,
-                                                   params,
-                                                   json.loads(output))
-                        LOGGER.info(
-                            "Action performed and stored, exiting thread")
-                        LOGGER.info(output)
-                    action_submitted = True
-            else:
-                LOGGER.debug("Operational status: {0}, waiting ...".
-                             format(operational_status))
-        return
+            if operational_status == self.deployment_expected_status:
+                payload = {"action": action_name,
+                           "params": action_params}
+                # Execute the specific action at the NS instance
+                output = self.exec_action_on_ns(nsi_id, payload)
+#                if action is not None:
+#                    app.mongo.store_vnf_action(vnf_instance,
+#                                               action,
+#                                               params,
+#                                               json.loads(output))
+                LOGGER.info(
+                    "Action performed and stored, exiting thread")
+                LOGGER.info(output)
+                action_submitted = True
+        return action_submitted
 
     @check_authorization
-    def post_ns_instance(self, inst_md):
-        # TODO Create proper model, then enforce with pydantic
+    def create_ns_instance(self, inst_md):
         """
         Required structure (inst_md):
         {
-            "ns-name": "<name for the NS package>",
-            "instance-name": "<name for the NS instance>",
+            "ns-pkg-id": "<UUID of the NS package>",
             "vim-id": "<UUID of the VIM>"
         }
         Optional structure (inst_md):
         {
-            "ns-id": "<UUID of the NS package>"
+            "name": "<name for the NS instance>",
+            "description": "<description for the NS instance>",
+            "ssh-keys": ["key1", ..., "keyN"],
+            "ns-action-name": "<name of the action to run post-creation>",
+            "ns-action-params": [{"key1": "value1"}, ..., {"keyN": "valueN"}]
         }
         """
+        ns_pkg_id = inst_md.get("ns-pkg-id", None)
         vim_id = inst_md.get("vim-id")
-        nsd_id = inst_md.get("ns-id", None)
-        if not nsd_id:
-            nsd_id = self.get_ns_descriptor(inst_md["ns-name"]).get("_id")
+        ns_name = inst_md.get("name")
+        ns_description = inst_md.get("description")
+        ns_sshkeys = inst_md.get("ssh-keys")
+        ns_action_name = inst_md.get("ns-action-name")
+        ns_action_params = inst_md.get("ns-action-params")
         LOGGER.info("VIM ID = {0}".format(vim_id))
-        ns_data = {"nsdId": nsd_id,
-                   "nsName": inst_md["instance-name"],
-                   "nsDescription": "Instance of pkg={}".format(
-                       inst_md["ns-name"]),
-                   "vimAccountId": vim_id}
+        nsi_data = {}
+        if ns_pkg_id is not None:
+            nsi_data.update({"nsdId": ns_pkg_id})
+        if vim_id is None:
+            vim_id = self.vim_fallback
+        nsi_data.update({"vimAccountId": vim_id})
+        if ns_name is None:
+            ns_name = str(uuid4())
+        nsi_data.update({"nsName": ns_name})
+        if ns_description is not None:
+            nsi_data.update({"nsDescription": ns_description})
+        else:
+            nsi_data.update(
+                    {"nsDescription": "Instance of package with id={}".
+                        format(ns_pkg_id)})
+        if ns_sshkeys is not None:
+            if isinstance(ns_sshkeys, str):
+                ns_sshkeys = [ns_sshkeys]
+            nsi_data.update({"ssh_keys": ns_sshkeys})
 
-        # FIXME
-        self.instantiation_url = "{0}/osm/nslcm/v1/ns_instances_content".\
-                                 format(self.base_url)
-        response = requests.post(self.instantiation_url,
+        response = requests.post(self.url_nsi_detail,
                                  headers=self.headers,
                                  verify=False,
-                                 json=ns_data)
-        response_data = json.loads(response.text)
-        resp = response
+                                 json=nsi_data)
+        response_data = response.json()
+        status_code = response_data.get("status")
+        detail = response_data.get("detail")
+        if status_code is None:
+            status_code = HttpCode.OK
+        if status_code == 400:
+            if "Invalid vimAccountId" in detail:
+                raise osm_exception.OSMResourceNotFound(
+                    {"error": "VIM with id={} does not exist"
+                      .format(ns_pkg_id)})
+        elif status_code == 404:
+            if "any nsd with filter" in detail:
+                raise osm_exception.OSMResourceNotFound(
+                    {"error": "NS package with id={} does not exist"
+                        .format(ns_pkg_id)})
+        elif status_code > 400:
+            raise osm_exception.OSMException(
+                {"error": detail, "status": status_code})
 
-        # response = requests.post(self.instantiation_url,
-        #                          headers=self.headers,
-        #                          verify=False,
-        #                          json=ns_data)
-        # response_data = json.loads(response.text)
-        # resp = response
-        # inst_url = "{0}/{1}/instantiate".format(self.instantiation_url,
-        #                                         response_data["id"])
-        # resp = requests.post(inst_url,
-        #                      headers=self.headers,
-        #                      verify=False,
-        #                      json=ns_data)
-        # FIXME return proper data (ns-id, for instance)
-        if resp.status_code in (200, 201, 202):
-            success_msg = {"instance-name": inst_md["instance-name"],
-                           "instance-id": response_data["id"],
-                           "ns-name": inst_md["ns-name"],
+        nsr_id = response_data.get("id")
+
+        # Asynchronous behaviour
+        t = threading.Thread(target=self.monitor_ns_deployment,
+                             args=(nsr_id, ns_action_name, ns_action_params,
+                                   current_app._get_current_object(),
+                                   self.deployment_expected_status))
+        t.start()
+        # Synchronous behaviour
+        # self.monitor_ns_deployment(nsr_id,
+        #                            ns_action_name,
+        #                            ns_action_params,
+        #                            current_app._get_current_object(),
+        #                            self.deployment_expected_status)
+
+        success_msg = {"id": nsr_id,
+                       "status": HttpCode.ACCEPTED}
+        if detail is not None:
+            success_msg.update({"detail": detail})
+        return success_msg
+
+        if response_data.status_code >= 200 and\
+                response_data.status_code < 400:
+            success_msg = {"name": ns_name,
+                           "id": response_data.get("id"),
+                           "ns-pkg-id": ns_pkg_id,
                            "vim-id": vim_id,
-                           "result": "success"}
-            self.apply_mspl_action(response_data["id"], inst_md)
+                           "status": HttpCode.ACCEPTED}
             return success_msg
         else:
-            error_msg = {"result": "error",
-                         "error-response": resp}
+            error_msg = {"status": response_data.status.code,
+                         "error": response_data}
             return error_msg
 
     @check_authorization
-    def delete_ns_instance(self, nsr_id):
-        inst_url = "{0}/{1}".format(self.instantiation_url,
-                                    nsr_id)
-        response = requests.post(
-            "{0}/terminate".format(inst_url),
-            headers=self.headers,
-            verify=False)
-        if not str(response.status_code).startswith("2"):
-            SOException.conflict_from_client(
-                "NS instance with id={} does not exist".format(nsr_id))
-        requests.delete("{0}".format(inst_url),
-                        headers=self.headers,
-                        verify=False)
-        # Uncomment next lines for asynchronous behaviour
-        # t = threading.Thread(target=self.monitor_ns_deletion,
-        #                      args=(nsr_id,
-        #                            current_app._get_current_object()))
-        # t.start()
-        # Comment next line for asynchronous behaviour
-        self.monitor_ns_deletion(nsr_id, current_app._get_current_object())
-        success_msg = {"instance-id": nsr_id,
-                       "action": "delete",
-                       "result": "success"}
-        return success_msg
+    def delete_ns_instance(self, nsr_id, force=False):
+        self.exec_builtin_action_on_ns(nsr_id, "terminate")
+        # Asynchronous behaviour
+        t = threading.Thread(target=self.monitor_ns_deletion,
+                             args=(nsr_id, force))
+        t.start()
+        # Synchronous behaviour
+        # self.monitor_ns_deletion(nsr_id, current_app._get_current_object())
+        return {"id": nsr_id, "status": HttpCode.ACCEPTED}
 
     @check_authorization
-    def monitor_ns_deletion(self, ns_instance_id, app):
+    def monitor_ns_deletion(self, nsi_id, force=False):
         timeout = self.monitoring_timeout
-        inst_url = "{0}/{1}".format(self.instantiation_url,
-                                    ns_instance_id)
+        inst_url = "{0}/{1}".format(self.url_nsi_list,
+                                    nsi_id)
         while timeout > 0:
             try:
-                ns_status = self.get_ns_instances(ns_instance_id)
-                status = ns_status["ns"][0]["operational-status"].lower()
-                LOGGER.info("Operational Status = {0}".format(status))
-                if status == "terminated":
-                    LOGGER.info("Terminated already")
+                ns_status = self.get_ns_instances(nsi_id)
+                status = ns_status.get("ns")[0].get("status")\
+                    .get("operational").lower()
+                LOGGER.info("Monitoring status for ns={0}: {1}".format(
+                    nsi_id, status))
+                if status in [self.deletion_expected_status,
+                              self.force_deletion_expected_status]:
+                    LOGGER.info("NS with id={0} already in state={1}".format(
+                        nsi_id, status))
                     break
-            except OSMException:
+            except Exception as e:
+                LOGGER.error("Cannot retrieve status for ns={0}. Details={1}".
+                             format(nsi_id, e))
                 break
             timeout -= 1
-            time.sleep(1)
+            sleep(1)
+        if force:
+            inst_url = "{}?FORCE=true".format(inst_url)
         delete = requests.delete(inst_url,
                                  headers=self.headers,
                                  verify=False)
@@ -655,121 +728,173 @@ class OSM():
 
     @check_authorization
     def get_ns_instance_name(self, nsr_id):
-        inst_url = "{0}/{1}".format(self.instantiation_url,
+        inst_url = "{0}/{1}".format(self.url_nsi_list,
                                     nsr_id)
         response = requests.get(inst_url,
                                 headers=self.headers,
                                 verify=False)
         ns_instances = json.loads(response.text)
-        iparams = ns_instances.get("instantiate-params", None)
+        iparams = ns_instances.get("instantiate_params", None)
         if iparams:
             return iparams.get("nsName", None)
         else:
             return None
 
+#    # Called externally
+#    @check_authorization
+#    def get_ns_instances(self, nsr_id=None):
+#        if nsr_id is not None:
+#            inst_url = "{0}/{1}".format(self.url_nsi_list,
+#                                        nsr_id)
+#        else:
+#            inst_url = "{0}".format(self.url_nsi_list)
+#        response = requests.get(inst_url,
+#                                headers=self.headers,
+#                                verify=False)
+#        ns_instances = json.loads(response.text)
+#        if nsr_id is not None:
+#            return {"ns": [self.filter_output_nsi(ns_instances)]}
+#        ns_data = {"ns":
+#                   [self.filter_output_nsi(x) for x in ns_instances]}
+#        return ns_data
+
+    # Called externally
     @check_authorization
-    def get_ns_instances(self, nsr_id=None):
-        if nsr_id is not None:
-            inst_url = "{0}/{1}".format(self.instantiation_url,
-                                        nsr_id)
+    def get_ns_instances(self, nsi_id=None):
+        nss = []
+        if nsi_id is None:
+            url = self.url_nsi_list
+            response = requests.get(url,
+                                    headers=self.headers,
+                                    verify=False)
+            nss = response.json()
         else:
-            inst_url = "{0}".format(self.instantiation_url)
-        response = requests.get(inst_url,
-                                headers=self.headers,
-                                verify=False)
-        ns_instances = json.loads(response.text)
-        if nsr_id is not None:
-            return {"ns": [self.filter_output_nsi(ns_instances)]}
-        ns_data = {"ns":
-                   [self.filter_output_nsi(x) for x in ns_instances]}
-        return ns_data
+            url = "{0}/{1}".format(self.url_nsi_list, nsi_id)
+            response = requests.get(url,
+                                    headers=self.headers,
+                                    verify=False)
+            result = response.json()
+            if result.get("status") == 404:
+                raise osm_exception.OSMInstanceNotFound(
+                    {"error": "NS instance (id: {}) was not found".format(
+                         nsi_id),
+                     "status": HttpCode.NOT_FOUND})
+            nss.append(result)
+        return {"ns": list(map(
+            lambda x: self.filter_output_nsi(x), nss))}
 
     def filter_output_nsi(self, nsi):
         out_nsi = {}
-        out_nsi["config-status"] = nsi.get("config-status", "null")
-        out_nsi["constituent-vnf-instances"] = []
         if "_id" not in nsi:
-            raise OSMInstanceNotFound("NS instance was not found")
-        vnfis = self.get_vnf_instances(nsi["_id"])
-        for vnfi in vnfis:
-            vnfi.update({"ns-name": nsi.get("ns-name", nsi.get("name"))})
-            vnfi.update({"vnfr-name": "{0}__{1}__1".format(nsi["nsd-name-ref"],
-                                                           vnfi["vnfd-id"])})
-            # FIXME
-            # Reminder: populate existing config jobs from the model
-            # dbm = DBManager()
-            # vnfi.update({"config-jobs":
-            #              dbm.get_vnf_actions(vnfi["vnfr-id"])})
-            out_nsi["constituent-vnf-instances"].append(vnfi)
-        out_nsi["instance-id"] = nsi["id"]
-        out_nsi["instance-name"] = nsi["name"]
-        # out_nsi["name"] = nsi["name"]
-        out_nsi["ns-name"] = nsi["nsd-name-ref"]
-        out_nsi["nsd-id"] = nsi["nsd-ref"]
-        out_nsi["operational-status"] = nsi["operational-status"]
-        if out_nsi["operational-status"] == "ACTIVE":
-            out_nsi["operational-status"] = "running"
-        out_nsi["vlrs"] = vnfis[0].get("vlrs", [])
+            raise osm_exception.OSMInstanceNotFound(
+                    {"error": "NS instance was not found",
+                     "status": HttpCode.NOT_FOUND})
+        vim = nsi.get("vld")[0].get("vim_info")
+        vim_id = None
+        if vim is not None:
+            for vim_k, vim_v in vim.items():
+                vim_id = vim_v.get("vim_account_id")
+                break
+        vim_name = None
+        vim_detail = self.get_vim_account(vim_id)
+        if vim_detail is not None and "name" in vim_detail.keys():
+            vim_name = vim_detail.get("name")
+        creation_time = TimeHandling.ms_to_rfc3339(nsi.get("create-time"))
+        out_nsi.update({
+            "creation-time": creation_time,
+            "ns-id": nsi.get("id"),
+            "vnfd-id": nsi.get("vnfd-id"),
+            "ns-name": nsi.get("name"),
+            "status": {
+                "config": nsi.get("config-status"),
+                "operational": nsi.get("operational-status")
+            }
+        })
+        vim_dict = {}
+        if vim_id is not None:
+            vim_dict.update({"id": vim_id})
+        if vim_name is not None:
+            vim_dict.update({"name": vim_name})
+        if len(vim_dict) > 0:
+            out_nsi.update({"vim": vim_dict})
         return out_nsi
 
+    # Called externally
     @check_authorization
-    def get_vnf_instances(self, ns_instance_id=None):
-        if ns_instance_id is None:
-            nss = self.get_ns_instances()
-            nss_ids = [x["instance-id"] for x in nss["ns"]]
-            vnfs = []
-            for ns_instance_id in nss_ids:
-                url = "{0}?nsr-id-ref={1}".format(
-                    self.vnf_instances_url, ns_instance_id)
-                response = requests.get(url,
-                                        headers=self.headers,
-                                        verify=False)
-                for vnf in json.loads(response.text):
-                    vnfs.append(vnf)
-            return {"vnf":
-                    [self.filter_output_vnfi(x)
-                     for x in vnfs]}
-        url = "{0}?nsr-id-ref={1}".format(
-            self.vnf_instances_url, ns_instance_id)
-        response = requests.get(url,
-                                headers=self.headers,
-                                verify=False)
-        vnfis = json.loads(response.text)
-        return [self.filter_output_vnfi(x) for x in vnfis]
+    def get_vnf_instances(self, vnfi_id=None):
+        vnfs = []
+        if vnfi_id is None:
+            url = self.url_vnfr_detail
+            response = requests.get(url,
+                                    headers=self.headers,
+                                    verify=False)
+            vnfs = response.json()
+        else:
+            url = "{0}/{1}".format(self.url_vnfr_detail, vnfi_id)
+            response = requests.get(url,
+                                    headers=self.headers,
+                                    verify=False)
+            result = response.json()
+            if result.get("status") == 404:
+                raise osm_exception.OSMInstanceNotFound(
+                    {"error": "VNF instance (id: {}) was not found".format(
+                         vnfi_id),
+                     "status": HttpCode.NOT_FOUND})
+            vnfs.append(result)
+        return {"vnf": list(map(
+            lambda x: self.filter_output_vnfi(x), vnfs))}
 
     @check_authorization
     def filter_output_vnfi(self, vnfi):
         out_vnfi = {}
-        vdur = {}
-        if len(vnfi["vdur"]) > 0:
-            vdur = vnfi["vdur"][0]
-        out_vnfi["operational-status"] = vdur.get("status", "null")
-        if out_vnfi["operational-status"] == "ACTIVE":
-            out_vnfi["operational-status"] = "running"
-        out_vnfi["config-status"] = "config-not-needed"
-        out_vnfi["ip"] = vdur.get("ip-address", "null")
-        out_vnfi["ns_id"] = vnfi.get("nsr-id-ref")
-        vnfd = self.get_vnf_descriptor(vnfi.get("vnfd-ref", "null"))
-        if vnfd:
-            out_vnfi["vendor"] = vnfd["vendor"]
-        else:
-            out_vnfi["vendor"] = None
+#        vnfd = self.get_vnf_descriptor(vnfi.get("vnfd-ref"))
+        xdur = {}
+        if len(vnfi.get("vdur")) > 0:
+            xdur = vnfi.get("vdur")[0]
+        elif len(vnfi.get("kdur")) > 0:
+            xdur = vnfi.get("kdur")[0]
+        ip = xdur.get("ip-address")
+        if ip is None:
+            for svc in xdur.get("services"):
+                # Assumption: the main node will have to
+                # communicate outwards, e.g., with LoadBalancer
+                if svc.get("type") == "LoadBalancer":
+                    ip = svc.get("cluster_ip")
         vim = self.get_vim_account(vnfi.get("vim-account-id"))
-        if vim:
-            out_vnfi["vim"] = vim["name"]
-        else:
-            out_vnfi["vim"] = None
-        out_vnfi["vnfd-id"] = vnfi["vnfd-ref"]
-        out_vnfi["vnfr-name"] = vnfi["vnfd-ref"]
-        out_vnfi["vnfr-id"] = vnfi["id"]
-        # Note: OSM returns inconsistent naming for keys in this example
-        out_vnfi["ns-name"] = self.get_ns_instance_name(out_vnfi["ns_id"])
+        ns_id = vnfi.get("nsr-id-ref")
+        ns_name = self.get_ns_instance_name(ns_id)
+        creation_time = TimeHandling.ms_to_rfc3339(vnfi.get("created-time"))
+        out_vnfi.update({
+            "creation-time": creation_time,
+            "vnf-id": vnfi.get("id"),
+            "vnfd-id": vnfi.get("vnfd-ref"),
+            "ns-id": ns_id,
+            "ns-name": ns_name,
+            "ip": ip,
+            "status": {
+                "config": xdur.get("status"),
+                "operational": vnfi.get("_admin").get("nsState")
+            },
+            "vim": {
+                "id": vim.get("_id"),
+                "name": vim.get("name"),
+            }
+        })
+        try:
+            out_vnfi.update({
+                "k8scluster": {
+                    "id": xdur.get("k8s-cluster").get("id"),
+                    "namespace": xdur.get("k8s-namespace"),
+                }
+            })
+        except Exception:
+            pass
         return out_vnfi
 
 #    @check_authorization
 #    def get_vnf_descriptor(self, vnf_name):
 #        url = "{0}?name={1}".format(
-#            self.vnf_descriptors_url, vnf_name)
+#            self.url_vnfd_list, vnf_name)
 #        response = requests.get(url,
 #                                headers=self.headers,
 #                                verify=False)
@@ -782,14 +907,14 @@ class OSM():
 
     @check_authorization
     def get_vim_account(self, vim_account_id):
-        url = "{0}".format(self.vim_accounts_url)
+        url = "{0}".format(self.url_vim_list)
         response = requests.get(url,
                                 headers=self.headers,
                                 verify=False)
         vims = json.loads(response.text)
         target_vim = None
         for vim in vims:
-            if str(vim["_id"]) == str(vim_account_id):
+            if str(vim.get("_id")) == str(vim_account_id):
                 target_vim = vim
         return target_vim
 
@@ -799,75 +924,139 @@ class OSM():
         for instance in instances:
             for vnf_instance in instance.get(
                     "constituent-vnf-instances", []):
-                if vnf_instance["vnfr-id"] == vnfr_id:
-                    return instance["instance-id"]
+                if vnf_instance.get("vnfr-id") == vnfr_id:
+                    return instance.get("instance-id")
 
     @check_authorization
-    def exec_action_on_vnf(self, payload, instance_id=None):
-        # JSON
-        # resp = requests.post(
-        #        endpoints.VNF_ACTION_EXEC,
-        #        headers=endpoints.post_default_headers(),
-        #        data=json.dumps(payload),
-        #        verify=False)
-
-        # Encoded
-        # payload = payload.replace('\\"', '"').strip()
-        # Find out which ns_id holds the vnf:
-        if instance_id is None:
-            LOGGER.info("Instance id is none")
-            instance_id = self.get_instance_id_by_vnfr_id(
-                self.get_ns_instances()["ns"],
-                payload["vnfr-id"])
-            if not instance_id:
-                raise OSMException
-        nsi = self.get_ns_instances(instance_id)["ns"][0]
-        nsi_id = nsi["instance-id"]
-        url = self.exec_action_url
-        instance_url = url.replace("<ns-instance-id>", nsi_id)
-        LOGGER.info(nsi_id)
-        # FIXME in case the call does not work,
-        # use underscore instead of hyphen
-        osm_payload = {
-            "member-vnf-index": "1",
-            "primitive": payload["action"],
-            "primitive-params": payload["params"]}
-        resp = requests.post(
-            instance_url,
+    def exec_builtin_action_on_ns(self, nsi_id, action_name):
+        inst_url = "{0}/{1}".format(self.url_nsi_list, nsi_id)
+        if action_name not in self.osm_builtin_actions:
+            return {"error":
+                    "Action {} is not available".format(action_name),
+                    "status": HttpCode.METH_NOT_ALLOW}
+        data = {}
+        if action_name == "terminate":
+            data = {"timeout_ns_terminate": 1,
+                    "autoremove": False,
+                    # NB: enabling the one below is likely a cause for errors
+                    "skip_terminate_primitives": False
+                    }
+        elif action_name == "scale":
+            data = {
+                     "scaleType": "SCALE_VNF",
+                     "timeout_ns_scale": 0,
+                     "scaleVnfData": {
+                       "scaleVnfType": "SCALE_IN",
+                       "scaleByStepData": {
+                         "scaling-group-descriptor": "",
+                         "scaling-policy": "",
+                         "member-vnf-index": ""
+                       }
+                     }
+                   }
+        response = requests.post(
+            "{0}/{1}".format(inst_url, action_name),
             headers=self.headers,
-            data=yaml.dump(osm_payload),
+            data=data,
             verify=False)
-        LOGGER.info("POST TO URL: ==================·····")
-        LOGGER.info(instance_url)
-        LOGGER.info("HEADERS: ======================·····")
-        LOGGER.info(self.headers)
-        LOGGER.info("WITH PAYLOAD: =================·····")
-        LOGGER.info(osm_payload)
-        LOGGER.info("RESPONSE TEXT: ================·····")
-        LOGGER.info(resp.text)
-        LOGGER.info("RESPONSE STATUS CODE: =========·····")
-        LOGGER.info(resp.status_code)
-        LOGGER.info("===============================·····")
-        output = resp.text
-        return output
+        output = response.json()
+        http_code = output.get("status", HttpCode.ACCEPTED)
+        detail = output.get("detail")
+        # Act upon a failed status
+        # ... Yet ignore conflict (i.e., NS in a terminated state)
+        if http_code == 404:
+            raise osm_exception.OSMResourceNotFound(
+                    {"error": detail})
+        if http_code >= 400 and http_code != 409:
+            raise osm_exception.OSMException(
+                    {"error": detail,
+                     "status": http_code})
+        return {"id": nsi_id, "status": http_code}
 
-    def submit_action_request(self, vnfr_id=None, action=None, params=list()):
-        params_exist = all(map(lambda x: x is not None,
-                               [vnfr_id, action, params]))
-        if not params_exist:
-            return {"Error": "Missing argument"}
-        exec_tmpl = self.fill_vnf_action_request_encoded(
-            vnfr_id, action, params)
-        output = self.exec_action_on_vnf(exec_tmpl)
-        try:
-            output_dict = json.loads(output)
-        except Exception:
-            return {"Error": "SO-ub output is not valid JSON",
-                    "output": output}
-        # Keep track of remote action per vNSF
-        if action is not None:
-            current_app.mongo.store_vnf_action(vnfr_id,
-                                               action,
-                                               params,
-                                               output_dict)
-        return output
+    @check_authorization
+    def exec_action_on_ns(self, nsi_id, payload):
+        # nsd = self.get_ns_descriptor(nsi_id)
+        primitive_name = payload.get("action")
+        primitive_params = payload.get("params")
+
+        # First, enforce the NS instance exists
+        url_nsi_details = "{}?id={}".format(self.url_nsi_detail, nsi_id)
+        response = requests.get(url_nsi_details,
+                                headers=self.headers,
+                                verify=False)
+        nsd = response._content
+        if nsd is None:
+            raise osm_exception.OSMResourceNotFound(
+                {"error": "Cannot retrieve details for NS with " +
+                          "ID={}".format(nsi_id)})
+
+        # If action is one of the predetermined actions, call the specific
+        # endpoint (no params required) and finish
+        if primitive_name in self.osm_builtin_actions:
+            return self.exec_builtin_action_on_ns(nsi_id, primitive_name)
+
+        # Otherwise, obtain the NS descriptor for the VNF package name,
+        # then inspect its KDUs
+        nsd = response.json()
+        instance_url = self.url_nsd_action.format(nsi_id)
+        vnfd_name = nsd[0].get("nsd").get("vnfd-id")
+        if isinstance(vnfd_name, list):
+            vnfd_name = vnfd_name[0]
+        response = requests.get("{}?id={}".format(
+            self.url_vnfd_list, vnfd_name),
+                                headers=self.headers,
+                                verify=False)
+        vnfd = response._content
+        if vnfd is None:
+            raise osm_exception.OSMPackageError(
+                {"error": "Cannot retrieve suitable NF for NS package " +
+                          "with name={}".format(vnfd_name),
+                 "status": HttpCode.NOT_FOUND})
+        vnfd = response.json()
+        if isinstance(vnfd, list):
+            vnfd = vnfd[0]
+        vnfd_member_vnf = vnfd.get("id")
+
+        # Iterate on all existing KDUs
+        for vnfd_kdu in vnfd.get("kdu"):
+            vnfd_kdu_name = vnfd_kdu.get("name")
+            try:
+                primitive_params = json.loads(primitive_params)
+            except Exception:
+                pass
+            osm_payload = {
+                "kdu_name": vnfd_kdu_name,
+                "member_vnf_index": vnfd_member_vnf,
+                "primitive": primitive_name,
+                "primitive_params": primitive_params
+            }
+            resp = requests.post(
+                instance_url,
+                headers=self.headers,
+                data=yaml_dump(osm_payload),
+                verify=False)
+            LOGGER.info("POST TO URL: ==================·····")
+            LOGGER.info(instance_url)
+            LOGGER.info("HEADERS: ======================·····")
+            LOGGER.info(self.headers)
+            LOGGER.info("WITH PAYLOAD: =================·····")
+            LOGGER.info(osm_payload)
+            LOGGER.info("RESPONSE TEXT: ================·····")
+            LOGGER.info(resp.text)
+            LOGGER.info("RESPONSE STATUS CODE: =========·····")
+            LOGGER.info(resp.status_code)
+            LOGGER.info("===============================·····")
+            output = resp.json()
+            status_code = output.get("status")
+            if status_code is None:
+                status_code = HttpCode.ACCEPTED
+            if status_code >= 200 and status_code < 400:
+                success_msg = {"ns-id": nsi_id,
+                               "action-name": primitive_name,
+                               "action-params": primitive_params,
+                               "status": status_code}
+                return success_msg
+            else:
+                error_msg = {"status": status_code,
+                             "error": output.get("detail")}
+                return error_msg
