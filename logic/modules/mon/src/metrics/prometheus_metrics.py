@@ -32,8 +32,8 @@ class PrometheusMetrics():
     def prometheus_metrics(self, request):
         # Obtain values from request
         request_body = request.json
-        target_id = request_body.get("vnf-id")
-        instance = request_body.get("vnf-ip")
+        target_id = request_body.get("xnf-id")
+        instance = request_body.get("xnf-ip")
         metric_name = request_body.get("metric-name")
 
         targets_list = PrometheusTargets.objects.order_by("-id")\
@@ -46,19 +46,19 @@ class PrometheusMetrics():
                 metrics_data = requests.get(self.client_query)
                 metrics_json = metrics_data.json()
                 result = metrics_json["data"]["result"]
-                # Obtain vnf_index
-                vnf_list = []
+                # Obtain xnf_index
+                xnf_list = []
                 for i in result:
-                    vnf_list.append(i["metric"]["instance"])
-                vnf_index = vnf_list.index(target_id)
+                    xnf_list.append(i["metric"]["instance"])
+                xnf_index = xnf_list.index(target_id)
                 # Create metrics_dict
                 metrics_dict = {
-                    "vnf-id": target_id,
+                    "xnf-id": target_id,
                     "metric-name": metric_name,
                     "metric-value": "",
                 }
                 try:
-                    metric_value = result[vnf_index]["value"]
+                    metric_value = result[xnf_index]["value"]
                     metrics_dict["metric-value"] = metric_value
 
                 except KeyError:

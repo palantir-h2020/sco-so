@@ -15,7 +15,7 @@ from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
 
 class Pushgateway():
     """
-    Executes a remote command on VNFs and persists it on Prometheus
+    Executes a remote command on xNFs and persists it on Prometheus
     Pushgateway
     """
 
@@ -35,8 +35,8 @@ class Pushgateway():
 
     def persist_requests_mongodb(self):
         pushgateway_request_model = PushgatewayRequest()
-        pushgateway_request_model.vnf_id = self.vnf_id
-        pushgateway_request_model.vnf_ip = self.vnf_ip
+        pushgateway_request_model.xnf_id = self.xnf_id
+        pushgateway_request_model.xnf_ip = self.xnf_ip
         pushgateway_request_model.metric_name = self.metric_name
         pushgateway_request_model.metric_command = self.metric_command
         pushgateway_request_model.date = datetime.now()
@@ -44,8 +44,8 @@ class Pushgateway():
 
     def persist_response_mongodb(self):
         pushgateway_response_model = PushgatewayResponse()
-        pushgateway_response_model.vnf_id = self.vnf_id
-        pushgateway_response_model.vnf_ip = self.vnf_ip
+        pushgateway_response_model.xnf_id = self.xnf_id
+        pushgateway_response_model.xnf_ip = self.xnf_ip
         pushgateway_response_model.metric_name = self.metric_name
         pushgateway_response_model.metric_command = self.metric_command
         pushgateway_response_model.data = self.data
@@ -55,14 +55,14 @@ class Pushgateway():
     def persist_metric_prometheus_pushgateway(self, request):
 
         request_body = request.json
-        self.vnf_id = request_body.get("vnf-id")
-        self.vnf_ip = request_body.get("vnf-ip")
+        self.xnf_id = request_body.get("xnf-id")
+        self.xnf_ip = request_body.get("xnf-ip")
         self.metric_name = request_body.get("metric-name")
         self.metric_command = request_body.get("metric-command")
 
         targets_list = PrometheusTargets.objects.order_by("-id")\
             .first().targets
-        if self.vnf_id in targets_list:
+        if self.xnf_id in targets_list:
             self.persist_requests_mongodb()
             self.parser()
 
@@ -72,10 +72,10 @@ class Pushgateway():
 
             if parsed_metric_command2[0] in self.allowed_commands:
                 self.data = ExecuteCommand.execute_command(
-                    self.vnf_ip, parsed_metric_command1[0]
+                    self.xnf_ip, parsed_metric_command1[0]
                 )
                 self.result = {
-                    "vnf-id": self.vnf_id,
+                    "xnf-id": self.xnf_id,
                     "metric-name": self.metric_name,
                     "metric-command": parsed_metric_command1[0],
                     "data": self.data,
@@ -88,7 +88,7 @@ class Pushgateway():
                           registry=registry)
                 g.set(self.data)
                 try:
-                    pushadd_to_gateway("localhost:9091", job=self.vnf_ip,
+                    pushadd_to_gateway("localhost:9091", job=self.xnf_ip,
                                        registry=registry)
                 except Exception:
                     return "{} {}. {}".format(
@@ -99,11 +99,11 @@ class Pushgateway():
                 return self.result
             else:
                 self.result = {
-                    "vnf-id": self.vnf_id,
+                    "xnf-id": self.xnf_id,
                     "metric-name": self.metric_name,
                     "metric-command": self.metric_command,
                     "data": "Command not allowed",
                 }
                 return self.result
         else:
-            return "{} target is not registered".format(self.vnf_id)
+            return "{} target is not registered".format(self.xnf_id)

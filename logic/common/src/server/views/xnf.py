@@ -12,36 +12,36 @@ from common.server.http.http_response import HttpResponse
 from common.server.endpoints import VnsfoEndpoints as endpoints
 from flask import Blueprint
 from flask import request
-from nfv.vnf import VnsfoVnsf
+from nfv.xnf import VnsfoVnsf
 import json
 
-so_views = Blueprint("so_vnf_views", __name__)
+so_views = Blueprint("so_xnf_views", __name__)
 
 
 @so_views.route(endpoints.VNSF_C_VNSFS, methods=["GET"])
 @so_views.route(endpoints.VNSF_C_VNSFS_R2, methods=["GET"])
 def fetch_config_vnsfs():
-    vnf_object = VnsfoVnsf()
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_config())
+    xnf_object = VnsfoVnsf()
+    return HttpResponse.json(HttpCode.OK, xnf_object.get_xnfr_config())
 
 
 @so_views.route(endpoints.VNSF_C_VNSFS_R4, methods=["GET"])
 def fetch_config_vnsfs_r4():
-    vnf_object = VnsfoVnsf(4)
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_config())
+    xnf_object = VnsfoVnsf(4)
+    return HttpResponse.json(HttpCode.OK, xnf_object.get_xnfr_config())
 
 
 @so_views.route(endpoints.VNSF_R_VNSFS, methods=["GET"])
 @so_views.route(endpoints.VNSF_R_VNSFS_R2, methods=["GET"])
 def fetch_running_vnsfs():
-    vnf_object = VnsfoVnsf()
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_running())
+    xnf_object = VnsfoVnsf()
+    return HttpResponse.json(HttpCode.OK, xnf_object.get_xnfr_running())
 
 
 @so_views.route(endpoints.VNSF_R_VNSFS_R4, methods=["GET"])
 def fetch_running_vnsfs_r4():
-    vnf_object = VnsfoVnsf(4)
-    return HttpResponse.json(HttpCode.OK, vnf_object.get_vnfr_running())
+    xnf_object = VnsfoVnsf(4)
+    return HttpResponse.json(HttpCode.OK, xnf_object.get_xnfr_running())
 
 
 @so_views.route(endpoints.VNSF_VNSF_TENANT, methods=["GET"])
@@ -59,7 +59,7 @@ def fetch_running_vnsfs_per_tenant_r4(tenant_id):
 @so_views.route(endpoints.VNSF_ACTION_EXEC_R2, methods=["POST"])
 @content.expect_json_content
 def exec_primitive_on_vnsf():
-    vnf_object = VnsfoVnsf()
+    xnf_object = VnsfoVnsf()
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
         SOException.invalid_content_type("Expected: {}".format(exp_ct))
@@ -69,7 +69,7 @@ def exec_primitive_on_vnsf():
         SOException.improper_usage(
                 "Missing parameters: any of {}".format(exp_params))
     # Extract params, respecting the specific ordering
-    payload = vnf_object.submit_action_request(
+    payload = xnf_object.submit_action_request(
         *[request.json.get(x) for x in exp_params])
     try:
         payload_data = json.loads(payload)
@@ -85,7 +85,7 @@ def exec_primitive_on_vnsf():
 @so_views.route(endpoints.VNSF_ACTION_EXEC_R4, methods=["POST"])
 @content.expect_json_content
 def exec_primitive_on_vnsf_r4():
-    vnf_object = VnsfoVnsf(4)
+    xnf_object = VnsfoVnsf(4)
     exp_ct = "application/json"
     if exp_ct not in request.headers.get("Content-Type", ""):
         SOException.invalid_content_type("Expected: {}".format(exp_ct))
@@ -95,7 +95,7 @@ def exec_primitive_on_vnsf_r4():
         SOException.improper_usage(
                 "Missing parameters: any of {}".format(exp_params))
     # Extract params, respecting the specific ordering
-    payload = vnf_object.submit_action_request(
+    payload = xnf_object.submit_action_request(
         *[request.json.get(x) for x in exp_params])
     try:
         payload_data = json.loads(payload)

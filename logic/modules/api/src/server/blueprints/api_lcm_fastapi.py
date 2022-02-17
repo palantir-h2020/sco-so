@@ -112,14 +112,14 @@ def ns_inst_exec_action(request: Request, id: str,
     return requests.post(requests_ep, data=action_dict)
 
 
-@router.get(SOEndpoints.VNF, status_code=HttpCode.OK)
+@router.get(SOEndpoints.XNF, status_code=HttpCode.OK)
 @exception.handle_exc_resp
-def vnf_inst_list(request: Request,
+def xnf_inst_list(request: Request,
                   id: Optional[str] = None):
     """
-    Details on VNF running instances.
+    Details on xNF running instances.
     """
-    requests_ep = "{}/vnf".format(ep_base)
+    requests_ep = "{}/xnf".format(ep_base)
     if id is not None:
         requests_ep = "{}?id={}".format(requests_ep, id)
     return requests.get(requests_ep)

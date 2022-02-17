@@ -7,14 +7,14 @@
 import uuid
 
 
-class VNF(object):
+class XNF(object):
 
     @staticmethod
-    def vnf_list() -> list():
+    def xnf_list() -> list():
         # TODO: dummy code. Also, models must be placed elsewhere,
         # common code should be grouped, clients should be called to
         # retrieve metrics, etc
-        vnf_list = []
+        xnf_list = []
         metric_list = [
                 "free -m -h | tail -2 | head -1 | tr -s " " | cut -d " " -f 4",
                 "df -h",
@@ -26,11 +26,11 @@ class VNF(object):
                 "metric-def": metric_list[i],
                 "metric-value": "sample-value"
                 })
-        for vnf_i in range(0, 2):
-            vnf_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, "mon.vnf.%d" % vnf_i))
-            vnf_list.append({
-                "vnf-id": vnf_id,
+        for xnf_i in range(0, 2):
+            xnf_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, "mon.xnf.%d" % xnf_i))
+            xnf_list.append({
+                "xnf-id": xnf_id,
                 "metrics": metric_dict,
                 })
-        data = {"metrics": vnf_list}
+        data = {"metrics": xnf_list}
         return data

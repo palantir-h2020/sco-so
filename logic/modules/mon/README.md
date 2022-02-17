@@ -40,12 +40,12 @@ curl http://127.0.0.1:${PORT}/${MODL}
 curl http://127.0.0.1:${PORT}/${MODL}/infra
 curl http://127.0.0.1:${PORT}/${MODL}/infra\?id\=d762daf2-5e62-4bf4-b979-718b8349ed81
 
-## VNF metrics
-curl http://127.0.0.1:${PORT}/${MODL}/vnf
+## xNF metrics
+curl http://127.0.0.1:${PORT}/${MODL}/xnf
 
 ## Prometheus targets
 ### *Note*: the file located at "logic/modules/mon/deploy/docker/local/prometheus-targets.json" is modified to add, replace or delete Prometheus targets. This file is delivered empty on purpose, and after adding new targets it should follow a format like this:
-### [{"labels": {"job": "vnfs", "group": "vnfs", "env": "prod"}, "targets": ["10.10.10.11:9100", ..., "10.10.10.20:9100"]}]
+### [{"labels": {"job": "xnfs", "group": "xnfs", "env": "prod"}, "targets": ["10.10.10.11:9100", ..., "10.10.10.20:9100"]}]
 
 curl http://127.0.0.1:${PORT}/${MODL}/targets
 curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/targets -d '{"url": "target-ip-or-fqdn:9090"}'
@@ -55,15 +55,15 @@ curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DEL
 ## Prometheus targets metrics
 curl http://127.0.0.1:${PORT}/${MODL}/targets/metrics
 
-## VNF prometheus metrics
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics -d '{"vnf-id": "172.28.2.146:9100", "vnf-ip": "172.28.2.146", "metric-name": "node_netstat_Ip_Forwarding"}'
+## xNF prometheus metrics
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "node_netstat_Ip_Forwarding"}'
 
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:${PORT}/${MODL}/metrics -d '{"vnf-id": "172.28.2.146:9100", "vnf-ip": "172.28.2.146", "metric-name": "node_netstat_Ip_Forwarding"}'
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:${PORT}/${MODL}/metrics -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "node_netstat_Ip_Forwarding"}'
 
-## VNF remote command metrics
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics/vnf -d '{"vnf-id": "172.28.2.146:9100", "vnf-ip": "172.28.2.146", "metric-name": "list", "metric-command": "ls"}'
+## xNF remote command metrics
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics/xnf -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "list", "metric-command": "ls"}'
 
-## VNF prometheus-pushgateway metrics
-curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics/pushgateway -d '{"vnf-id": "172.28.2.146:9100", "metric-name": "disk_space", "metric-value": "660"}'
+## xNF prometheus-pushgateway metrics
+curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:${PORT}/${MODL}/metrics/pushgateway -d '{"xnf-id": "172.28.2.146:9100", "metric-name": "disk_space", "metric-value": "660"}'
 
 ```

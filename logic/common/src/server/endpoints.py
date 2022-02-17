@@ -10,7 +10,7 @@ class SOEndpoints:
     ROOT = "/"
     # General resources
     NS = "{}ns".format(ROOT)
-    VNF = "{}vnf".format(ROOT)
+    XNF = "{}xnf".format(ROOT)
     INFRA = "{}infra".format(ROOT)
     # General subentities
     INFRA_SVC = "{}/service".format(INFRA)
@@ -22,8 +22,8 @@ class SOEndpoints:
     # Endpoints
     LCM_NS = "{}/ns".format(LCM)
     LCM_NS_ACT = "{}/action".format(LCM_NS)
-    LCM_VNF = "{}/vnf".format(LCM)
+    LCM_XNF = "{}/xnf".format(LCM)
     MON_INFRA = "{}/infra".format(MON)
     MON_INFRA_SVC = "{}/service".format(MON_INFRA)
     PKG_NS = "{}/ns".format(PKG)
-    PKG_VNF = "{}/vnf".format(PKG)
+    PKG_XNF = "{}/xnf".format(PKG)

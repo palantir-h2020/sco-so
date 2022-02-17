@@ -21,7 +21,7 @@ from typing import Dict, List
 import requests
 
 
-class OSMInterfaceVNF:
+class OSMInterfaceXNF:
 
     def __init__(self, release=None):
         try:
@@ -46,29 +46,29 @@ class OSMInterfaceVNF:
 
     # Packages
 
-    def get_vnfr_config(self, pkg_id=None, pkg_name=None):
+    def get_xnfr_config(self, pkg_id=None, pkg_name=None):
         filter_arg = self._select_args([pkg_id, pkg_name])
-        return self.orchestrator.get_vnf_descriptors(filter_arg)
+        return self.orchestrator.get_xnf_descriptors(filter_arg)
 
     def onboard_package(self, pkg_file):
-        return self.orchestrator.upload_vnfd_package(pkg_file)
+        return self.orchestrator.upload_xnfd_package(pkg_file)
 
     def delete_package(self, pkg_name=None):
         return self.orchestrator.delete_package(pkg_name)
 
     # Running instances
 
-    def get_vnfr_running(self, instance_id=None):
-        return self.orchestrator.get_vnf_instances(instance_id)
+    def get_xnfr_running(self, instance_id=None):
+        return self.orchestrator.get_xnf_instances(instance_id)
 
-    def exec_action_on_vnf(self, payload: Dict):
-        return self.orchestrator.exec_action_on_vnf(payload)
+    def exec_action_on_xnf(self, payload: Dict):
+        return self.orchestrator.exec_action_on_xnf(payload)
 
     def submit_action_request(self,
                               id: str = None, action: str = None,
                               params: List = list()):
-        payload = {"vnfr-id": id,
+        payload = {"xnfr-id": id,
                    "action": action,
                    "params": params}
-        print("OSMInterfaceVNF - payload={}".format(payload))
-        return self.exec_action_on_vnf(payload)
+        print("OSMInterfaceXNF - payload={}".format(payload))
+        return self.exec_action_on_xnf(payload)

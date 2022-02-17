@@ -14,7 +14,7 @@ from .execute_command import ExecuteCommand
 
 class CommandReq():
     """
-    Executes an UNIX-like command on remote VNFs
+    Executes an UNIX-like command on remote xNFs
     """
     def parse_config(self):
         parser = FullConfParser()
@@ -26,14 +26,14 @@ class CommandReq():
     def metric_remote_command(self, request):
         self.parse_config()
         request_body = request.json
-        self.vnf_id = request_body.get("vnf-id")
-        vnf_ip = request_body.get("vnf-ip")
+        self.xnf_id = request_body.get("xnf-id")
+        xnf_ip = request_body.get("xnf-ip")
         self.metric_name = request_body.get("metric-name")
         self.metric_command = request_body.get("metric-command")
 
         targets_list = PrometheusTargets.objects.order_by("-id")\
             .first().targets
-        if self.vnf_id in targets_list:
+        if self.xnf_id in targets_list:
 
             parsed_metric_command = self.metric_command.split(";")
             parsed_metric_command1 = parsed_metric_command[0].split("&&")
@@ -41,10 +41,10 @@ class CommandReq():
 
             if parsed_metric_command2[0] in self.allowed_commands:
                 self.data = ExecuteCommand.execute_command(
-                    vnf_ip, parsed_metric_command1[0]
+                    xnf_ip, parsed_metric_command1[0]
                 )
                 self.result = {
-                    "vnf-id": self.vnf_id,
+                    "xnf-id": self.xnf_id,
                     "metric-name": self.metric_name,
                     "metric-command": parsed_metric_command1[0],
                     "data": self.data,
@@ -53,18 +53,18 @@ class CommandReq():
                 return self.result
             else:
                 self.result = {
-                    "vnf-id": self.vnf_id,
+                    "xnf-id": self.xnf_id,
                     "metric-name": self.metric_name,
                     "metric-command": self.metric_command,
                     "data": "Command not allowed",
                 }
                 return self.result
         else:
-            return "{} target is not registered".format(self.vnf_id)
+            return "{} target is not registered".format(self.xnf_id)
 
     def persist_metric_remote_command(self):
         remote_metric_model = RemoteCommand()
-        remote_metric_model.vnf_id = self.vnf_id
+        remote_metric_model.xnf_id = self.xnf_id
         remote_metric_model.metric_name = self.metric_name
         remote_metric_model.metric_command = self.metric_command
         remote_metric_model.data = self.data

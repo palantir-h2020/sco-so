@@ -16,5 +16,5 @@ class PushgatewayResponse(Document):
     date = DateField()
     metric_command = StringField()
     metric_name = StringField()
-    vnf_id = StringField()
-    vnf_ip = StringField()
+    xnf_id = StringField()
+    xnf_ip = StringField()

@@ -52,9 +52,9 @@ curl http://127.0.0.1:${PORT}/${MODL}/ns -X POST -H "Content-Type: application/j
 ## Delete running instance
 curl -X DELETE http://127.0.0.1:${PORT}/${MODL}/ns/<ns_instance_id>
 
-# VNF
+# xNF
 
 ## List running instances
-curl http://127.0.0.1:${PORT}/${MODL}/vnf
-curl http://127.0.0.1:${PORT}/${MODL}/vnf?id=<vnf_instance_id>
+curl http://127.0.0.1:${PORT}/${MODL}/xnf
+curl http://127.0.0.1:${PORT}/${MODL}/xnf?id=<xnf_instance_id>
 ```

@@ -28,19 +28,19 @@ ep_base = "http://so-{0}:{1}/{0}".format(
 # When response_model is set, pydantic is enforced. However, enforcing
 # one only would be problematic when a user selects a particular
 # Accept-Type. Thus, "Union[x, y]" is used to allow both models x and y
-# @router.get("/vnf", response_model=Union[List[MonInfraSchema], str],
+# @router.get("/xnf", response_model=Union[List[MonInfraSchema], str],
 #             status_code=HttpCode.OK)
 
-# VNF
+# xNF
 
-@router.get(SOEndpoints.VNF, status_code=HttpCode.OK)
+@router.get(SOEndpoints.XNF, status_code=HttpCode.OK)
 @exception.handle_exc_resp
-def vnf_pkg_list(request: Request, id: Optional[str] = None,
+def xnf_pkg_list(request: Request, id: Optional[str] = None,
                  name: Optional[str] = None) -> HttpResponse:
     """
-    Details on NF packages.
+    Details on xNF packages.
     """
-    requests_ep = "{}/vnf".format(ep_base)
+    requests_ep = "{}/xnf".format(ep_base)
     if id is not None:
         requests_ep = "{}?id={}".format(requests_ep, id)
     elif name is not None:
@@ -48,26 +48,26 @@ def vnf_pkg_list(request: Request, id: Optional[str] = None,
     return requests.get(requests_ep)
 
 
-@router.post(SOEndpoints.VNF, status_code=HttpCode.ACCEPTED)
+@router.post(SOEndpoints.XNF, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
-def vnf_pkg_onboard(request: Request,
+def xnf_pkg_onboard(request: Request,
                     package: UploadFile = File(
-                        ..., description="VNF in a .tar.gz")) -> HttpResponse:
+                        ..., description="xNF in a .tar.gz")) -> HttpResponse:
     """
-    Uploads a NF package as a .tar.gz file.
+    Uploads an xNF package as a .tar.gz file.
     """
-    requests_ep = "{}/vnf".format(ep_base)
+    requests_ep = "{}/xnf".format(ep_base)
     file_data = {"file": package.file.read()}
     return requests.post(requests_ep, files=file_data)
 
 
-@router.delete(SOEndpoints.VNF, status_code=HttpCode.ACCEPTED)
+@router.delete(SOEndpoints.XNF, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
-def vnf_pkg_delete(request: Request, id: str) -> HttpResponse:
+def xnf_pkg_delete(request: Request, id: str) -> HttpResponse:
     """
-    Delete specific NF package.
+    Delete specific xNF package.
     """
-    requests_ep = "{}/vnf?id={}".format(ep_base, id)
+    requests_ep = "{}/xnf?id={}".format(ep_base, id)
     return requests.delete(requests_ep)
 
 

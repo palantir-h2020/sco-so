@@ -55,7 +55,7 @@ def get_osm_instance(release: int):
 @content.on_mock(package_m().onboard_package_mock)
 def onboard_package(pkg_path, release=None):
     """
-    Uploads a locally stored VNF or NS package to the NFVO.
+    Uploads a locally stored xNF or NS package to the NFVO.
     Calling this method and POSTing a file from a remote server will
     result into more time to transfer the package.
 
@@ -76,7 +76,7 @@ def onboard_package(pkg_path, release=None):
 @content.on_mock(package_m().onboard_package_remote_mock)
 def onboard_package_remote(pkg_path, release=None):
     """
-    Uploads a remotely stored VNF or NS package to the NFVO.
+    Uploads a remotely stored xNF or NS package to the NFVO.
 
     @param pkg_path Remote path to the package
     @return output Structure with provided path and transaction ID

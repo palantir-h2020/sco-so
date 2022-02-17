@@ -22,7 +22,7 @@ from .models.isolation.isolation_policy import DeleteFlow
 from .models.isolation.isolation_policy import OpenstackIsolation
 from .models.isolation.isolation_policy import OpenstackTermination
 from .models.isolation.isolation_policy import Shutdown
-from .models.vnf_action_request import VnfActionRequest
+from .models.xnf_action_request import XnfActionRequest
 from mongoengine import connect as me_connect
 from mongoengine.errors import OperationError, ValidationError
 
@@ -78,7 +78,7 @@ mongo-db
                 "password_auth",
                 "shutdown",
                 "vdu",
-                "vnf_action_request"
+                "xnf_action_request"
         ]
         self.client = pymongo.MongoClient(self.address, self.port)
         self._first_setup()
@@ -131,24 +131,24 @@ mongo-db
     def __to_json(data):
         return json.dumps(data, default=json_util.default)
 
-    def format_vnf_action_output(self, output):
-        vnf_out_list_primitive = output["vnf-out-list"]["vnf-out-primitive"]
-        exec_id = vnf_out_list_primitive["execution-id"]
-        exec_status = vnf_out_list_primitive["execution-status"]
-        exec_err_details = vnf_out_list_primitive["execution-error-details"]
-        primitive_name = vnf_out_list_primitive["name"]
-        primitive_index = vnf_out_list_primitive["index"]
+    def format_xnf_action_output(self, output):
+        xnf_out_list_primitive = output["xnf-out-list"]["xnf-out-primitive"]
+        exec_id = xnf_out_list_primitive["execution-id"]
+        exec_status = xnf_out_list_primitive["execution-status"]
+        exec_err_details = xnf_out_list_primitive["execution-error-details"]
+        primitive_name = xnf_out_list_primitive["name"]
+        primitive_index = xnf_out_list_primitive["index"]
         return {
             "job_id": output.get("create-time", ""),
             "create_time": output.get("create-time", ""),
-            "vnf_id": output["vnf-out-list"]["vnfr-id-ref"],
+            "xnf_id": output["xnf-out-list"]["xnfr-id-ref"],
             "execution_id": exec_id,
             "execution_status": exec_status,
             "exec_err_details": exec_err_details,
             "name": primitive_name,
             "index": primitive_index,
-            "member_vnf_index_ref":
-            output["vnf-out-list"]["member_vnf_index_ref"],
+            "member_xnf_index_ref":
+            output["xnf-out-list"]["member_xnf_index_ref"],
             "instance_id": output["nsr_id_ref"],
             "triggered_by": output["triggered-by"]}
 
@@ -356,12 +356,12 @@ mongo-db
             raise Exception(e)
         return str(node.id)
 
-    def get_vnf_actions(self, vnsfr_id):
+    def get_xnf_actions(self, vnsfr_id):
         """
         Get remote action executed per vNSF.
         """
-        vnf_action_requests = VnfActionRequest.objects(vnsfr_id=vnsfr_id)
-        return vnf_action_requests
+        xnf_action_requests = XnfActionRequest.objects(vnsfr_id=vnsfr_id)
+        return xnf_action_requests
 
     def store_vdu(self, name, management_ip,
                   isolation_policy,
@@ -369,7 +369,7 @@ mongo-db
                   authentication,
                   analysis_type, pcr0, distribution, driver,
                   instance_id,
-                  vnfr_id):
+                  xnfr_id):
         """
         Register VDU as node.
         Isolation and/or termination policy is stored,
@@ -459,23 +459,23 @@ mongo-db
                    isolation_policy=isolation,
                    termination_policy=termination,
                    instance_id=str(instance_id),
-                   vnfr_id=str(vnfr_id))
+                   xnfr_id=str(xnfr_id))
         vdu.save()
 
-    def store_vnf_action(self, vnsfr_id, primitive, params, output):
+    def store_xnf_action(self, vnsfr_id, primitive, params, output):
         """
         Track remote action executed per vNSF.
         """
         try:
             if "output" in output:
-                fmt_output = self.format_vnf_action_output(output["output"])
+                fmt_output = self.format_xnf_action_output(output["output"])
             else:
                 fmt_output = output
-            vnf_action_request = VnfActionRequest(primitive=primitive,
+            xnf_action_request = XnfActionRequest(primitive=primitive,
                                                   vnsfr_id=vnsfr_id,
                                                   params=params,
                                                   response=fmt_output)
-            vnf_action_request.save()
+            xnf_action_request.save()
         except Exception:
             e = "Cannot store MSPL information for vNSF with ID: {}".\
                     format(vnsfr_id)

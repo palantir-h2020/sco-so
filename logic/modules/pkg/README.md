@@ -40,9 +40,9 @@ curl http://127.0.0.1:${PORT}/${MODL}
 curl http://127.0.0.1:${PORT}/${MODL}/ns
 curl http://127.0.0.1:${PORT}/${MODL}/ns?id=<ns_package_id>
 
-# VNF
+# xNF
 
 ## List packages
-curl http://127.0.0.1:${PORT}/${MODL}/vnf
-curl http://127.0.0.1:${PORT}/${MODL}/vnf?id=<vnf_package_id>
+curl http://127.0.0.1:${PORT}/${MODL}/xnf
+curl http://127.0.0.1:${PORT}/${MODL}/xnf?id=<xnf_package_id>
 ```

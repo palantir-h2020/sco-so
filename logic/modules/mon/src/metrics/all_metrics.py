@@ -16,14 +16,14 @@ class AllMetrics():
 
     def all_exporter_metrics(self, request):
         request_body = request.json
-        self.vnf_ip = request_body.get("vnf-ip")
+        self.xnf_ip = request_body.get("xnf-ip")
         self.general_conf = FullConfParser()
         self.mon_conf = self.general_conf.get("mon.yaml")
         self.mon_category = self.mon_conf.get("prometheus")
         self.mon_subcategory = self.mon_category.get("exporter")
         self.exporter_endpoint = "{}://{}:{}".format(
             self.mon_subcategory.get("protocol"),
-            self.vnf_ip,
+            self.xnf_ip,
             self.mon_subcategory.get("port"))
         self.exporter_query_endpoint = "{}/{}".format(
             self.exporter_endpoint,
@@ -37,8 +37,8 @@ class AllMetrics():
             data_list = []
             for i in RemoteCommand.objects:
                 data_list.append(
-                        RemoteCommand.objects.order_by("vnf_id").first()
-                        .vnf_id)
+                        RemoteCommand.objects.order_by("xnf_id").first()
+                        .xnf_id)
                 data_list.append(
                         RemoteCommand.objects.order_by("metric_name")
                         .first().metric_name)

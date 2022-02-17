@@ -84,7 +84,7 @@ class OSM():
         self.api_cat_section = self.api_cat_category.get("categories")
         self.timings_section = self.nfvo_category.get("timings")
         self._read_cfg_timings(self.timings_section)
-        self._read_cfg_vnfs(self.nfvo_category.get("nfs"))
+        self._read_cfg_xnfs(self.nfvo_category.get("xnfs"))
         # Definition of expected/target status upon operations
         self.deployment_expected_status = "running"
         self.deletion_expected_status = "terminated"
@@ -125,17 +125,17 @@ class OSM():
         self.events_topics_inst_ae = self.topics_section.get(
             "instantiation-ae")
 
-    def _read_cfg_vnfs(self, cfg_section: dict):
-        cfg_vnfs_gen = cfg_section.get("general")
-        self.vnf_user = cfg_vnfs_gen.get("user")
+    def _read_cfg_xnfs(self, cfg_section: dict):
+        cfg_xnfs_gen = cfg_section.get("general")
+        self.xnf_user = cfg_xnfs_gen.get("user")
         try:
             curr_path = os.path.dirname(os.path.abspath(__file__))
             key_path = os.path.join(curr_path, "../../../../keys")
             with open("{}/{}".format(
-                  key_path, cfg_vnfs_gen.get("key"))) as fhandle:
-                self.vnf_key = fhandle.read()
+                  key_path, cfg_xnfs_gen.get("key"))) as fhandle:
+                self.xnf_key = fhandle.read()
         except Exception as e:
-            raise osm_exception.OSMVNFKeyNotFound(e)
+            raise osm_exception.OSMXNFKeyNotFound(e)
 
     def _create_ep_osm(self):
         def _ep(url):
@@ -144,19 +144,19 @@ class OSM():
 
         # Authentication
         self.url_token = _ep("/admin/v1/tokens")
-        # Package descriptors (NSD, VNFD)
+        # Package descriptors (NSD, xNFD)
         self.url_nsd_list = _ep("/nsd/v1/ns_descriptors")
         self.url_nsd_detail = _ep("/nsd/v1/ns_descriptors_content")
-        self.url_vnfd_list = _ep("/vnfpkgm/v1/vnf_packages")
-        self.url_vnfd_detail = _ep("/vnfpkgm/v1/vnf_packages_content")
-        # Running instances (NSI, VNFI) and actions (on NSs)
+        self.url_xnfd_list = _ep("/vnfpkgm/v1/vnf_packages")
+        self.url_xnfd_detail = _ep("/vnfpkgm/v1/vnf_packages_content")
+        # Running instances (NSI, xNFI) and actions (on NSs)
         self.url_nsi_list = _ep("/nslcm/v1/ns_instances")
         self.url_nsi_detail = _ep("/nslcm/v1/ns_instances_content")
         self.url_nsd_action = _ep("/nslcm/v1/ns_instances/{}/action")
         # Actions on running instances (NSI)
         self.url_nsi_action_detail = _ep("/nslcm/v1/ns_lcm_op_occs")
-        # Records of running instances (NSR, VNFR)
-        self.url_vnfr_detail = _ep("/nslcm/v1/vnfrs")
+        # Records of running instances (NSR, xNFR)
+        self.url_xnfr_detail = _ep("/nslcm/v1/vnfrs")
         # Infrastructure
         self.url_vim_list = _ep("/admin/v1/vim_accounts")
 
@@ -205,19 +205,19 @@ class OSM():
         return
 
     @check_authorization
-    def get_vnf_descriptor(self, vnf_filter):
+    def get_xnf_descriptor(self, xnf_filter):
         """
-        Given a name (or ID), returns the VNFD.
+        Given a name (or ID), returns the xNFD.
         """
-        response = requests.get(self.url_vnfd_list,
+        response = requests.get(self.url_xnfd_list,
                                 headers=self.headers,
                                 verify=False)
-        vnfds = json.loads(response.text)
-        for vnfd in vnfds:
-            if vnfd.get("name", None) == vnf_filter or\
-                    vnfd.get("product-name", None) == vnf_filter or\
-                    vnfd.get("_id", None) == vnf_filter:
-                return vnfd
+        xnfds = json.loads(response.text)
+        for xnfd in xnfds:
+            if xnfd.get("name", None) == xnf_filter or\
+                    xnfd.get("product-name", None) == xnf_filter or\
+                    xnfd.get("_id", None) == xnf_filter:
+                return xnfd
         return
 
     # Called externally
@@ -243,23 +243,23 @@ class OSM():
 
     # Called externally
     @check_authorization
-    def get_vnf_descriptors(self, vnf_filter=None):
-        response = requests.get(self.url_vnfd_list,
+    def get_xnf_descriptors(self, xnf_filter=None):
+        response = requests.get(self.url_xnfd_list,
                                 headers=self.headers,
                                 verify=False)
-        vnfs = json.loads(response.text)
-        result = vnfs
-        if vnf_filter is not None and not isinstance(vnf_filter, list):
-            vnfd = self.get_vnf_descriptor(vnf_filter)
-            if vnfd is None:
+        xnfs = json.loads(response.text)
+        result = xnfs
+        if xnf_filter is not None and not isinstance(xnf_filter, list):
+            xnfd = self.get_xnf_descriptor(xnf_filter)
+            if xnfd is None:
                 raise osm_exception.OSMPackageError(
-                    {"error": "Package {} does not exist".format(vnf_filter),
+                    {"error": "Package {} does not exist".format(xnf_filter),
                      "status": HttpCode.NOT_FOUND})
-            result = vnfd
+            result = xnfd
         if not isinstance(result, list):
             result = [result]
         return {
-            "vnf": list(map(lambda x: self.filter_output_vnfd(x), result)),
+            "xnf": list(map(lambda x: self.filter_output_xnfd(x), result)),
             "status": HttpCode.OK}
 
     def filter_output_nsd(self, nsd):
@@ -269,49 +269,49 @@ class OSM():
         out_nsd["description"] = nsd.get("description")
         out_nsd["vendor"] = nsd.get("vendor", None)
         out_nsd["version"] = nsd.get("version", None)
-        out_nsd["vnfs"] = nsd.get("vnfd-id")
+        out_nsd["xnfs"] = nsd.get("vnfd-id")
         out_nsd["virtual-links"] = [
             x["id"] for x in nsd.get("virtual-link-desc", [])
             ]
         return out_nsd
 
-    def filter_output_vnfd(self, vnf):
-        out_vnfd = {}
-        out_vnfd["name"] = vnf.get("id")
-        out_vnfd["id"] = vnf.get("_id")
-        out_vnfd["description"] = vnf.get("description")
-        out_vnfd["vendor"] = vnf.get("vendor", None)
-        out_vnfd["version"] = vnf.get("version", None)
+    def filter_output_xnfd(self, xnf):
+        out_xnfd = {}
+        out_xnfd["name"] = xnf.get("id")
+        out_xnfd["id"] = xnf.get("_id")
+        out_xnfd["description"] = xnf.get("description")
+        out_xnfd["vendor"] = xnf.get("vendor", None)
+        out_xnfd["version"] = xnf.get("version", None)
         try:
-            vnf_lcm_ops_cfg = \
-                    vnf.get("df", [{}])[0]["lcm-operations-configuration"]
-            vnf_lcm_vnf_ops_cfg = vnf_lcm_ops_cfg.get("operate-vnf-op-config")
-            vnf_lcm_vnf_ops_day12_cfg = vnf_lcm_vnf_ops_cfg.get("day1-2")
+            xnf_lcm_ops_cfg = \
+                    xnf.get("df", [{}])[0]["lcm-operations-configuration"]
+            xnf_lcm_xnf_ops_cfg = xnf_lcm_ops_cfg.get("operate-vnf-op-config")
+            xnf_lcm_xnf_ops_day12_cfg = xnf_lcm_xnf_ops_cfg.get("day1-2")
             day0_prims = [
                 x.get("name") for x in
-                vnf_lcm_vnf_ops_day12_cfg[0].get("initial-config-primitive")
+                xnf_lcm_xnf_ops_day12_cfg[0].get("initial-config-primitive")
                 ]
             day12_prims = []
-            for day12_prim in vnf_lcm_vnf_ops_day12_cfg:
+            for day12_prim in xnf_lcm_xnf_ops_day12_cfg:
                 config_prim = day12_prim.get("config-primitive")[0]
                 day12_prims.append(config_prim.get("name"))
-            out_vnfd["config-actions"] = {
+            out_xnfd["config-actions"] = {
                 "day0": day0_prims, "day1-2": day12_prims
                 }
         except Exception:
-            out_vnfd["config-actions"] = []
+            out_xnfd["config-actions"] = []
         try:
-            vnf_inst_level = vnf.get("df")[0]["instantiation-level"]
-            vnf_vdu_struct = vnf_inst_level[0]["vdu-level"][0]
-            out_vnfd["vdus"] = vnf_vdu_struct.get("number-of-instances")
+            xnf_inst_level = xnf.get("df")[0]["instantiation-level"]
+            xnf_vdu_struct = xnf_inst_level[0]["vdu-level"][0]
+            out_xnfd["vdus"] = xnf_vdu_struct.get("number-of-instances")
         except Exception:
-            out_vnfd["vdus"] = 0
+            out_xnfd["vdus"] = 0
         nss = self.get_ns_descriptors()
         for ns in nss["ns"]:
-            for cvnf in ns.get("constituent-vnfs", []):
-                if cvnf["vnfd-id-ref"] == vnf.get("name"):
-                    out_vnfd["ns-name"] = ns.get("ns-name")
-        return out_vnfd
+            for cxnf in ns.get("constituent-vnfs", []):
+                if cxnf["vnfd-id-ref"] == xnf.get("name"):
+                    out_xnfd["ns-name"] = ns.get("ns-name")
+        return out_xnfd
 
     @check_authorization
     def get_ns_descriptors_content(self):
@@ -393,9 +393,9 @@ class OSM():
             "id": output.get("id"),
             "status": HttpCode.ACCEPTED}
 
-    def upload_vnfd_package(self, bin_file):
-        # Endpoint: "/vnfpkgm/v1/vnf_packages_content"
-        return self.upload_package(bin_file, self.url_vnfd_detail)
+    def upload_xnfd_package(self, bin_file):
+        # Endpoint: "/xnfpkgm/v1/xnf_packages_content"
+        return self.upload_package(bin_file, self.url_xnfd_detail)
 
     def upload_nsd_package(self, bin_file):
         # Endpoint: "/nsd/v1/ns_descriptors_content"
@@ -404,10 +404,10 @@ class OSM():
     def guess_descriptor_type(self, package_name):
         res = {}
         descriptor_id = None
-        descriptor = self.get_vnf_descriptor(package_name)
+        descriptor = self.get_xnf_descriptor(package_name)
         if descriptor is not None:
             descriptor_id = descriptor.get("_id")
-            res.update({"id": descriptor_id, "type": "vnf"})
+            res.update({"id": descriptor_id, "type": "xnf"})
         if descriptor_id is None:
             descriptor = self.get_ns_descriptor(package_name)
             if descriptor is not None:
@@ -429,7 +429,7 @@ class OSM():
                 if "nsd" in descriptor.keys():
                     return "nsd"
                 if "vnfd" in descriptor.keys():
-                    return "vnfd"
+                    return "xnfd"
         return "unknown"
 
     def onboard_package_remote(self, pkg_path):
@@ -460,8 +460,8 @@ class OSM():
                 bin_file = FileStorage(fp, filename, "package", content_type)
         if bin_file is not None:
             ptype = self.guess_package_type(bin_file)
-            if ptype == "vnfd":
-                output = self.upload_vnfd_package(bin_file)
+            if ptype == "xnfd":
+                output = self.upload_xnfd_package(bin_file)
             elif ptype == "nsd":
                 output = self.upload_nsd_package(bin_file)
             else:
@@ -485,9 +485,9 @@ class OSM():
             del_url = "{0}/{1}".format(
                 self.url_nsd_list,
                 descriptor_id)
-        elif descriptor_type == "vnf":
+        elif descriptor_type == "xnf":
             del_url = "{0}/{1}".format(
-                self.url_vnfd_list,
+                self.url_xnfd_list,
                 descriptor_id)
         else:
             raise osm_exception.OSMUnknownPackageType(
@@ -643,7 +643,7 @@ class OSM():
                                                    infra_data)
 
 #                if action is not None:
-#                    app.mongo.store_vnf_action(vnf_instance,
+#                    app.mongo.store_xnf_action(xnf_instance,
 #                                               action,
 #                                               params,
 #                                               json.loads(output))
@@ -874,7 +874,7 @@ class OSM():
         out_nsi.update({
             "creation-time": creation_time,
             "ns-id": nsi.get("id"),
-            "vnfd-id": nsi.get("vnfd-id"),
+            "xnfd-id": nsi.get("vnfd-id"),
             "ns-name": nsi.get("name"),
             "status": {
                 "config": nsi.get("config-status"),
@@ -892,38 +892,38 @@ class OSM():
 
     # Called externally
     @check_authorization
-    def get_vnf_instances(self, vnfi_id=None):
-        vnfs = []
-        if vnfi_id is None:
-            url = self.url_vnfr_detail
+    def get_xnf_instances(self, xnfi_id=None):
+        xnfs = []
+        if xnfi_id is None:
+            url = self.url_xnfr_detail
             response = requests.get(url,
                                     headers=self.headers,
                                     verify=False)
-            vnfs = response.json()
+            xnfs = response.json()
         else:
-            url = "{0}/{1}".format(self.url_vnfr_detail, vnfi_id)
+            url = "{0}/{1}".format(self.url_xnfr_detail, xnfi_id)
             response = requests.get(url,
                                     headers=self.headers,
                                     verify=False)
             result = response.json()
             if result.get("status") == 404:
                 raise osm_exception.OSMInstanceNotFound(
-                    {"error": "VNF instance (id: {}) was not found".format(
-                         vnfi_id),
+                    {"error": "xNF instance (id: {}) was not found".format(
+                         xnfi_id),
                      "status": HttpCode.NOT_FOUND})
-            vnfs.append(result)
-        return {"vnf": list(map(
-            lambda x: self.filter_output_vnfi(x), vnfs))}
+            xnfs.append(result)
+        return {"xnf": list(map(
+            lambda x: self.filter_output_xnfi(x), xnfs))}
 
     @check_authorization
-    def filter_output_vnfi(self, vnfi):
-        out_vnfi = {}
-#        vnfd = self.get_vnf_descriptor(vnfi.get("vnfd-ref"))
+    def filter_output_xnfi(self, xnfi):
+        out_xnfi = {}
+#        xnfd = self.get_xnf_descriptor(xnfi.get("xnfd-ref"))
         xdur = {}
-        if len(vnfi.get("vdur")) > 0:
-            xdur = vnfi.get("vdur")[0]
-        elif len(vnfi.get("kdur")) > 0:
-            xdur = vnfi.get("kdur")[0]
+        if len(xnfi.get("vdur")) > 0:
+            xdur = xnfi.get("vdur")[0]
+        elif len(xnfi.get("kdur")) > 0:
+            xdur = xnfi.get("kdur")[0]
         ip = xdur.get("ip-address")
         if ip is None:
             for svc in xdur.get("services"):
@@ -931,20 +931,20 @@ class OSM():
                 # communicate outwards, e.g., with LoadBalancer
                 if svc.get("type") == "LoadBalancer":
                     ip = svc.get("cluster_ip")
-        vim = self.get_vim_account(vnfi.get("vim-account-id"))
-        ns_id = vnfi.get("nsr-id-ref")
+        vim = self.get_vim_account(xnfi.get("vim-account-id"))
+        ns_id = xnfi.get("nsr-id-ref")
         ns_name = self.get_ns_instance_name(ns_id)
-        creation_time = TimeHandling.ms_to_rfc3339(vnfi.get("created-time"))
-        out_vnfi.update({
+        creation_time = TimeHandling.ms_to_rfc3339(xnfi.get("created-time"))
+        out_xnfi.update({
             "creation-time": creation_time,
-            "vnf-id": vnfi.get("id"),
-            "vnfd-id": vnfi.get("vnfd-ref"),
+            "xnf-id": xnfi.get("id"),
+            "xnfd-id": xnfi.get("vnfd-ref"),
             "ns-id": ns_id,
             "ns-name": ns_name,
             "ip": ip,
             "status": {
                 "config": xdur.get("status"),
-                "operational": vnfi.get("_admin").get("nsState")
+                "operational": xnfi.get("_admin").get("nsState")
             },
             "vim": {
                 "id": vim.get("_id"),
@@ -952,7 +952,7 @@ class OSM():
             }
         })
         try:
-            out_vnfi.update({
+            out_xnfi.update({
                 "k8scluster": {
                     "id": xdur.get("k8s-cluster").get("id"),
                     "namespace": xdur.get("k8s-namespace"),
@@ -960,21 +960,21 @@ class OSM():
             })
         except Exception:
             pass
-        return out_vnfi
+        return out_xnfi
 
 #    @check_authorization
-#    def get_vnf_descriptor(self, vnf_name):
+#    def get_xnf_descriptor(self, xnf_name):
 #        url = "{0}?name={1}".format(
-#            self.url_vnfd_list, vnf_name)
+#            self.url_xnfd_list, xnf_name)
 #        response = requests.get(url,
 #                                headers=self.headers,
 #                                verify=False)
-#        vnfds = json.loads(response.text)
-#        target_vnfd = None
-#        for vnfd in vnfds:
-#            if vnfd["name"] == vnf_name:
-#                target_vnfd = vnfd
-#        return target_vnfd
+#        xnfds = json.loads(response.text)
+#        target_xnfd = None
+#        for xnfd in xnfds:
+#            if xnfd["name"] == xnf_name:
+#                target_xnfd = xnfd
+#        return target_xnfd
 
     @check_authorization
     def get_vim_account(self, vim_account_id):
@@ -989,13 +989,13 @@ class OSM():
                 target_vim = vim
         return target_vim
 
-    def get_instance_id_by_vnfr_id(self, instances, vnfr_id):
-        LOGGER.info("Getting instance_id by vnf_id")
-        LOGGER.info("VNFR_ID {0}".format(vnfr_id))
+    def get_instance_id_by_xnfr_id(self, instances, xnfr_id):
+        LOGGER.info("Getting instance_id by xnf_id")
+        LOGGER.info("xNFR_ID {0}".format(xnfr_id))
         for instance in instances:
-            for vnf_instance in instance.get(
+            for xnf_instance in instance.get(
                     "constituent-vnf-instances", []):
-                if vnf_instance.get("vnfr-id") == vnfr_id:
+                if xnf_instance.get("vnfr-id") == xnfr_id:
                     return instance.get("instance-id")
 
     @check_authorization
@@ -1067,38 +1067,38 @@ class OSM():
         if primitive_name in self.osm_builtin_actions:
             return self.exec_builtin_action_on_ns(nsi_id, primitive_name)
 
-        # Otherwise, obtain the NS descriptor for the VNF package name,
+        # Otherwise, obtain the NS descriptor for the xNF package name,
         # then inspect its KDUs
         nsd = response.json()
         instance_url = self.url_nsd_action.format(nsi_id)
-        vnfd_name = nsd[0].get("nsd").get("vnfd-id")
-        if isinstance(vnfd_name, list):
-            vnfd_name = vnfd_name[0]
+        xnfd_name = nsd[0].get("nsd").get("vnfd-id")
+        if isinstance(xnfd_name, list):
+            xnfd_name = xnfd_name[0]
         response = requests.get("{}?id={}".format(
-            self.url_vnfd_list, vnfd_name),
+            self.url_xnfd_list, xnfd_name),
                                 headers=self.headers,
                                 verify=False)
-        vnfd = response._content
-        if vnfd is None:
+        xnfd = response._content
+        if xnfd is None:
             raise osm_exception.OSMPackageError(
                 {"error": "Cannot retrieve suitable NF for NS package " +
-                          "with name={}".format(vnfd_name),
+                          "with name={}".format(xnfd_name),
                  "status": HttpCode.NOT_FOUND})
-        vnfd = response.json()
-        if isinstance(vnfd, list):
-            vnfd = vnfd[0]
-        vnfd_member_vnf = vnfd.get("id")
+        xnfd = response.json()
+        if isinstance(xnfd, list):
+            xnfd = xnfd[0]
+        xnfd_member_xnf = xnfd.get("id")
 
         # Iterate on all existing KDUs
-        for vnfd_kdu in vnfd.get("kdu"):
-            vnfd_kdu_name = vnfd_kdu.get("name")
+        for xnfd_kdu in xnfd.get("kdu"):
+            xnfd_kdu_name = xnfd_kdu.get("name")
             try:
                 primitive_params = json.loads(primitive_params)
             except Exception:
                 pass
             osm_payload = {
-                "kdu_name": vnfd_kdu_name,
-                "member_vnf_index": vnfd_member_vnf,
+                "kdu_name": xnfd_kdu_name,
+                "member_vnf_index": xnfd_member_xnf,
                 "primitive": primitive_name,
                 "primitive_params": primitive_params
             }

@@ -29,7 +29,7 @@ events:
     instantiation-ae: ae.register-sc
 
 # Network Function access
-nfs:
+xnfs:
   general:
     user: ubuntu
     # Name of key located under ${root}/keys/

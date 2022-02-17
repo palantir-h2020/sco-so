@@ -12,9 +12,9 @@ from mongoengine import StringField
 import datetime
 
 
-class VnfActionRequest(Document):
+class XnfActionRequest(Document):
     """
-    Vnf action request model
+    xNF action request model
     """
     date = DateTimeField(default=datetime.datetime.now)
     primitive = StringField(required=True)

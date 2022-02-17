@@ -40,10 +40,10 @@ class Metrics:
                             .first().targets
         return self.targets_list
 
-    def exporter_metrics(self, vnf_id, metric_name):
+    def exporter_metrics(self, xnf_id, metric_name):
         self.retrieve_targets_list()
         self.parser_config()
-        if (vnf_id is None) and (metric_name is None):
+        if (xnf_id is None) and (metric_name is None):
             metrics_list = []
             for target in self.targets_list:
                 exporter_data = requests.get(
@@ -55,42 +55,42 @@ class Metrics:
             return metrics_list
         else:
             if metric_name is None:
-                if vnf_id in self.targets_list:
+                if xnf_id in self.targets_list:
                     exporter_data = requests.get(
                         "{}://{}/{}".format(
-                            self.protocol, vnf_id, self.query_endpoint)
+                            self.protocol, xnf_id, self.query_endpoint)
                     )
                     exporter_data_text = exporter_data.text
                     return exporter_data_text
                 else:
-                    return "{} Target is not registered".format(vnf_id)
+                    return "{} Target is not registered".format(xnf_id)
             else:
-                if vnf_id is None:
+                if xnf_id is None:
                     return ""
                 else:
-                    if vnf_id in self.targets_list:
+                    if xnf_id in self.targets_list:
                         exporter_data = requests.get(
                             "{}://{}/{}".format(
-                                self.protocol, vnf_id, self.query_endpoint)
+                                self.protocol, xnf_id, self.query_endpoint)
                         )
                         exporter_data_text = exporter_data.text
                         return exporter_data_text
                     else:
-                        return "{} Target is not registered".format(vnf_id)
+                        return "{} Target is not registered".format(xnf_id)
 
-    def mongodb_metrics(self, vnf_id, metric_name):
-        if (vnf_id is None) and (metric_name is None):
+    def mongodb_metrics(self, xnf_id, metric_name):
+        if (xnf_id is None) and (metric_name is None):
             try:
                 mongo_list = []
                 for target in self.targets_list:
-                    for i in remote_command.find({"vnf_id": target}):
+                    for i in remote_command.find({"xnf_id": target}):
                         mongo_dict = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict["vnf-id"] = i["vnf_id"]
+                        mongo_dict["xnf-id"] = i["xnf_id"]
                         mongo_dict["metric-name"] = i["metric_name"]
                         mongo_dict["metric-command"] = i["metric_command"]
                         mongo_dict["data"] = i["data"]
@@ -102,73 +102,73 @@ class Metrics:
                         "Check your MongoDB connection")
         else:
             if metric_name is None:
-                if vnf_id in self.targets_list:
+                if xnf_id in self.targets_list:
                     mongo_list = []
-                    for i in remote_command.find({"vnf_id": vnf_id}):
+                    for i in remote_command.find({"xnf_id": xnf_id}):
                         mongo_dict = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict["vnf-id"] = i["vnf_id"]
+                        mongo_dict["xnf-id"] = i["xnf_id"]
                         mongo_dict["metric-name"] = i["metric_name"]
                         mongo_dict["metric-command"] = i["metric_command"]
                         mongo_dict["data"] = i["data"]
                         mongo_list.append(mongo_dict)
                     return mongo_list
                 else:
-                    return "{} Target is not registered".format(vnf_id)
+                    return "{} Target is not registered".format(xnf_id)
             else:
-                if vnf_id is None:
+                if xnf_id is None:
                     mongo_list = []
                     for i in remote_command.find({"metric_name": metric_name}):
                         mongo_dict = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict["vnf-id"] = i["vnf_id"]
+                        mongo_dict["xnf-id"] = i["xnf_id"]
                         mongo_dict["metric-name"] = i["metric_name"]
                         mongo_dict["metric-command"] = i["metric_command"]
                         mongo_dict["data"] = i["data"]
                         mongo_list.append(mongo_dict)
                     return mongo_list
                 else:
-                    if vnf_id in self.targets_list:
+                    if xnf_id in self.targets_list:
                         mongo_list = []
                         for i in remote_command.find({
-                                "vnf_id": vnf_id,
+                                "xnf_id": xnf_id,
                                 "metric_name": metric_name}):
                             mongo_dict = {
-                                "vnf-id": "",
+                                "xnf-id": "",
                                 "metric-name": "",
                                 "metric-command": "",
                                 "data": "",
                             }
-                            mongo_dict["vnf-id"] = i["vnf_id"]
+                            mongo_dict["xnf-id"] = i["xnf_id"]
                             mongo_dict["metric-name"] = i["metric_name"]
                             mongo_dict["metric-command"] = i["metric_command"]
                             mongo_dict["data"] = i["data"]
                             mongo_list.append(mongo_dict)
                         return mongo_list
                     else:
-                        return "{} Target is not registered".format(vnf_id)
+                        return "{} Target is not registered".format(xnf_id)
 
-    def mongodb_pushgateway_metrics(self, vnf_id, metric_name):
-        if (vnf_id is None) and (metric_name is None):
+    def mongodb_pushgateway_metrics(self, xnf_id, metric_name):
+        if (xnf_id is None) and (metric_name is None):
             try:
                 mongo_list_pushgateway = []
                 for target in self.targets_list:
-                    for i in pushgateway_response.find({"vnf_id": target}):
+                    for i in pushgateway_response.find({"xnf_id": target}):
                         mongo_dict_pushgateway = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict_pushgateway["vnf-id"] = i["vnf_id"]
+                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
                         mongo_dict_pushgateway["metric-name"] = \
                             i["metric_name"]
                         mongo_dict_pushgateway["metric-command"] = \
@@ -182,16 +182,16 @@ class Metrics:
                         "Check your MongoDB connection")
         else:
             if metric_name is None:
-                if vnf_id in self.targets_list:
+                if xnf_id in self.targets_list:
                     mongo_list_pushgateway = []
-                    for i in pushgateway_response.find({"vnf_id": vnf_id}):
+                    for i in pushgateway_response.find({"xnf_id": xnf_id}):
                         mongo_dict_pushgateway = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict_pushgateway["vnf-id"] = i["vnf_id"]
+                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
                         mongo_dict_pushgateway["metric-name"] = \
                             i["metric_name"]
                         mongo_dict_pushgateway["metric-command"] = \
@@ -200,19 +200,19 @@ class Metrics:
                         mongo_list_pushgateway.append(mongo_dict_pushgateway)
                     return mongo_list_pushgateway
                 else:
-                    return "{} Target is not registered".format(vnf_id)
+                    return "{} Target is not registered".format(xnf_id)
             else:
-                if vnf_id is None:
+                if xnf_id is None:
                     mongo_list_pushgateway = []
                     for i in pushgateway_response.find({
                             "metric_name": metric_name}):
                         mongo_dict_pushgateway = {
-                            "vnf-id": "",
+                            "xnf-id": "",
                             "metric-name": "",
                             "metric-command": "",
                             "data": "",
                         }
-                        mongo_dict_pushgateway["vnf-id"] = i["vnf_id"]
+                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
                         mongo_dict_pushgateway["metric-name"] = \
                             i["metric_name"]
                         mongo_dict_pushgateway["metric-command"] = \
@@ -221,18 +221,18 @@ class Metrics:
                         mongo_list_pushgateway.append(mongo_dict_pushgateway)
                     return mongo_list_pushgateway
                 else:
-                    if vnf_id in self.targets_list:
+                    if xnf_id in self.targets_list:
                         mongo_list_pushgateway = []
                         for i in pushgateway_response.find({
-                                "vnf_id": vnf_id,
+                                "xnf_id": xnf_id,
                                 "metric_name": metric_name}):
                             mongo_dict_pushgateway = {
-                                "vnf-id": "",
+                                "xnf-id": "",
                                 "metric-name": "",
                                 "metric-command": "",
                                 "data": "",
                             }
-                            mongo_dict_pushgateway["vnf-id"] = i["vnf_id"]
+                            mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
                             mongo_dict_pushgateway["metric-name"] = \
                                 i["metric_name"]
                             mongo_dict_pushgateway["metric-command"] = \
@@ -242,4 +242,4 @@ class Metrics:
                                 mongo_dict_pushgateway)
                         return mongo_list_pushgateway
                     else:
-                        return "{} Target is not registered".format(vnf_id)
+                        return "{} Target is not registered".format(xnf_id)

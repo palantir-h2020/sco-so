@@ -16,7 +16,7 @@ from metrics.metrics import Metrics
 from metrics.prometheus_metrics import PrometheusMetrics
 from metrics.pushgateway import Pushgateway
 from server.logic.prometheus_targets import PrometheusTarget
-from server.logic.vnf import VNF
+from server.logic.xnf import XNF
 
 background_mon = BackgroundMonitoring()
 command_request = CommandReq()
@@ -26,12 +26,12 @@ node = NodeExporterSetup()
 prometheus_targets_handler = PrometheusTarget()
 prometheus_metrics = PrometheusMetrics()
 pushgateway = Pushgateway()
-so_blueprints = Blueprint("so__mon__vnf", __name__)
+so_blueprints = Blueprint("so__mon__xnf", __name__)
 
 
-@so_blueprints.route("/mon/vnf", methods=["GET"])
-def vnf_list() -> HttpResponse:
-    data = VNF.vnf_list()
+@so_blueprints.route("/mon/xnf", methods=["GET"])
+def xnf_list() -> HttpResponse:
+    data = XNF.xnf_list()
     return HttpResponse.infer(data, HttpCode.OK)
 
 
@@ -49,26 +49,26 @@ def targets_handle() -> HttpResponse:
 
 
 @so_blueprints.route("/mon/targets/metrics", methods=["GET"])
-def vnf_metrics() -> HttpResponse:
-    vnf_id = request.args.get("vnf-id")
+def xnf_metrics() -> HttpResponse:
+    xnf_id = request.args.get("xnf-id")
     metric_name = request.args.get("metric-name")
     data = [
-        metrics_.exporter_metrics(vnf_id, metric_name),
-        metrics_.mongodb_metrics(vnf_id, metric_name),
-        metrics_.mongodb_pushgateway_metrics(vnf_id, metric_name),
+        metrics_.exporter_metrics(xnf_id, metric_name),
+        metrics_.mongodb_metrics(xnf_id, metric_name),
+        metrics_.mongodb_pushgateway_metrics(xnf_id, metric_name),
     ]
     data = {"results": data}
     return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/metrics", methods=["GET"])
-def vnf_metrics_handle() -> HttpResponse:
+def xnf_metrics_handle() -> HttpResponse:
     data = prometheus_metrics.prometheus_metrics(request)
     return HttpResponse.infer(data, HttpCode.OK)
 
 
-@so_blueprints.route("/mon/metrics/vnf", methods=["POST"])
-def vnf_metrics_request() -> HttpResponse:
+@so_blueprints.route("/mon/metrics/xnf", methods=["POST"])
+def xnf_metrics_request() -> HttpResponse:
     try:
         data = pushgateway.persist_metric_prometheus_pushgateway(request)
     except Exception:
@@ -77,7 +77,7 @@ def vnf_metrics_request() -> HttpResponse:
 
 
 @so_blueprints.route("/mon/metrics/node", methods=["POST", "DELETE"])
-def vnf_metrics_node() -> HttpResponse:
+def xnf_metrics_node() -> HttpResponse:
     data = node.manual_install_uninstall_exporter(request)
     data = {"results": data}
     return HttpResponse.infer(data, HttpCode.OK)

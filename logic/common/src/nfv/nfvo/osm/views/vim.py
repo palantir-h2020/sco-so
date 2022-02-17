@@ -25,24 +25,24 @@ from flask import Blueprint
 from flask import request
 
 so_views = Blueprint("so_vim_views", __name__)
-so_vnf = vim_s()
+so_xnf = vim_s()
 
 
 @so_views.route(endpoints.VIM_LIST, methods=["GET"])
 @content.expect_json_content
 def get_vim_list():
-    return HttpResponse.json(HttpCode.OK, so_vnf.get_vim_list())
+    return HttpResponse.json(HttpCode.OK, so_xnf.get_vim_list())
 
 
 @so_views.route(endpoints.VIM_IMAGE, methods=["GET"])
 @content.expect_json_content
 def get_vim_images():
-    return HttpResponse.json(HttpCode.OK, so_vnf.get_vim_img_list())
+    return HttpResponse.json(HttpCode.OK, so_xnf.get_vim_img_list())
 
 
 @so_views.route(endpoints.VIM_IMAGE_UPLOAD, methods=["POST"])
 @content.expect_json_content
-def register_vnf_image(vim_id):
+def register_xnf_image(vim_id):
     exp_ct = "multipart/form-data"
     if exp_ct not in request.headers.get("Content-Type", ""):
         SOException.invalid_content_type("Expected: {}".format(exp_ct))
@@ -51,5 +51,5 @@ def register_vnf_image(vim_id):
     img_bin = request.files.get("image")
     img_name = img_bin.filename
     # img_name = img_name[0:img_name.index(".")-1]
-    output = so_vnf.register_vdu(vim_id, img_name, img_bin.stream)
+    output = so_xnf.register_vdu(vim_id, img_name, img_bin.stream)
     return HttpResponse.json(HttpCode.ACCEPTED, output)

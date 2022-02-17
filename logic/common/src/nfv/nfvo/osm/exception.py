@@ -35,9 +35,9 @@ class OSMPackageNotFound(SOException):
         self.status_code = status_code
 
 
-class OSMVNFKeyNotFound(SOException):
+class OSMXNFKeyNotFound(SOException):
     def __init__(self, msg=None, status_code=404):
-        self.msg = "Private key to access VNF could not be found"
+        self.msg = "Private key to access xNF could not be found"
         if msg is not None:
             self.msg = msg
         self.status_code = status_code
