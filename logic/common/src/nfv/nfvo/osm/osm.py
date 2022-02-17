@@ -220,6 +220,23 @@ class OSM():
                 return xnfd
         return
 
+    @check_authorization
+    def get_xnf_descriptor_actions(self, xnfd_id):
+        xnfd_actions = []
+        xnfd_url = "{0}/{1}".format(self.url_xnfd_detail, xnfd_id)
+        response = requests.get("{0}".format(xnfd_url),
+                                headers=self.headers,
+                                verify=False)
+        xnfd = response.json()
+        try:
+            xnfd_actions = xnfd.get("df")[0]\
+                .get("lcm-operations-configuration")\
+                .get("operate-vnf-op-config").get("day1-2")[0]\
+                .get("config-primitive")
+        except Exception:
+            pass
+        return xnfd_actions
+
     # Called externally
     @check_authorization
     def get_ns_descriptors(self, ns_filter=None):
@@ -872,6 +889,7 @@ class OSM():
             vim_name = vim_detail.get("name")
         creation_time = TimeHandling.ms_to_rfc3339(nsi.get("create-time"))
         nsi_id = nsi.get("id")
+        xnfd_id = nsi.get("vnfd-id")
         out_nsi.update({
             "creation-time": creation_time,
             "id": nsi_id,
@@ -882,20 +900,25 @@ class OSM():
             },
             "xnf": {
                 "id": nsi.get("constituent-vnfr-ref"),
-                # "xnfd-id": nsi.get("vnfd-id"),
             },
             "status": {
                 "config": nsi.get("config-status"),
                 "operational": nsi.get("operational-status")
             }
         })
-        actions = {}
-        try:
-            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
-            for vca_app_name, vca_app_cfg in vca_apps.items():
-                actions.update(vca_app_cfg.get("actions"))
-        except Exception:
-            pass
+        # Get actions
+        # actions = {}
+        actions = []
+#        try:
+#            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
+#            for vca_app_name, vca_app_cfg in vca_apps.items():
+#                actions.update(vca_app_cfg.get("actions"))
+#        except Exception:
+#            pass
+        # Hack
+        if isinstance(xnfd_id, list) and len(xnfd_id) > 0:
+            xnfd_id = xnfd_id[0]
+        actions = self.get_xnf_descriptor_actions(xnfd_id)
         if len(actions) > 0:
             out_nsi.update({"actions": actions})
         vim_dict = {}
@@ -952,11 +975,12 @@ class OSM():
         ns_id = xnfi.get("nsr-id-ref")
         ns_name = self.get_ns_instance_name(ns_id)
         creation_time = TimeHandling.ms_to_rfc3339(xnfi.get("created-time"))
+        xnfd_id = xnfi.get("vnfd-id")
         out_xnfi.update({
             "creation-time": creation_time,
             "id": xnfi.get("id"),
             "package": {
-                "id": xnfi.get("vnfd-id"),
+                "id": xnfd_id,
                 "name": xnfi.get("vnfd-ref"),
             },
             "ns": {
@@ -973,6 +997,21 @@ class OSM():
                 "name": vim.get("name"),
             }
         })
+        # Get actions
+        # actions = {}
+        actions = []
+#        try:
+#            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
+#            for vca_app_name, vca_app_cfg in vca_apps.items():
+#                actions.update(vca_app_cfg.get("actions"))
+#        except Exception:
+#            pass
+        # Hack
+        if isinstance(xnfd_id, list) and len(xnfd_id) > 0:
+            xnfd_id = xnfd_id[0]
+        actions = self.get_xnf_descriptor_actions(xnfd_id)
+        if len(actions) > 0:
+            out_xnfi.update({"actions": actions})
         try:
             out_xnfi.update({
                 "k8scluster": {
