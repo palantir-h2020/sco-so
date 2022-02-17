@@ -16,6 +16,7 @@
 # limitations under the License.
 
 from common.config.parser.fullparser import FullConfParser
+from common.events.kafka.producer import SOProducer
 from common.log.log import setup_custom_logger
 from common.server.http.http_code import HttpCode
 from common.utils import download
@@ -78,10 +79,11 @@ class OSM():
         self._read_cfg_osm(self.osm_section)
         self._create_ep_osm()
         self._create_session()
-        self.mon_section = self.nfvo_category.get("monitoring")
-        self._read_cfg_monitoring(self.mon_section)
-        # self.monitoring_interval = 1
-        # self.monitoring_timeout = 60
+        # Get ports for services
+        self.api_cat_category = self.config.get("api.categories.yaml")
+        self.api_cat_section = self.api_cat_category.get("categories")
+        self.timings_section = self.nfvo_category.get("timings")
+        self._read_cfg_timings(self.timings_section)
         self._read_cfg_vnfs(self.nfvo_category.get("nfs"))
         # Definition of expected/target status upon operations
         self.deployment_expected_status = "running"
@@ -90,6 +92,8 @@ class OSM():
         # self.osm_builtin_actions = ["initiate", "scale",
         #    "terminate", "update"]
         self.osm_builtin_actions = ["instantiate", "scale", "terminate"]
+        # Message broker
+        self._read_cfg_events(self.nfvo_category.get("events"))
 
     def _read_cfg_osm(self, cfg_section: dict):
         cfg_osm_nbi = cfg_section.get("nbi")
@@ -102,9 +106,24 @@ class OSM():
         cfg_osm_vim = cfg_section.get("vim")
         self.vim_fallback = cfg_osm_vim.get("fallback")
 
-    def _read_cfg_monitoring(self, cfg_section: dict):
-        self.monitoring_interval = cfg_section.get("interval")
-        self.monitoring_timeout = cfg_section.get("timeout")
+    def _read_cfg_timings(self, cfg_section: dict):
+        self.timing_interval = cfg_section.get("interval")
+        self.async_to_sec = cfg_section.get("timeout")
+        self.timing_to = self.async_to_sec.get("default")
+        self.timing_to_inst = self.async_to_sec.get("instantiation")
+        self.timing_to_act = self.async_to_sec.get("action")
+        self.timing_to_sca = self.async_to_sec.get("scale")
+        self.timing_to_term = self.async_to_sec.get("termination")
+        self.timing_to_del = self.async_to_sec.get("deletion")
+
+    def _read_cfg_events(self, cfg_section: dict):
+        try:
+            self.events_active = bool(cfg_section.get("active"))
+        except Exception:
+            self.events_active = False
+        self.topics_section = cfg_section.get("topics")
+        self.events_topics_inst_ae = self.topics_section.get(
+            "instantiation-ae")
 
     def _read_cfg_vnfs(self, cfg_section: dict):
         cfg_vnfs_gen = cfg_section.get("general")
@@ -160,6 +179,12 @@ class OSM():
         token = json.loads(response.text).get("id")
         self.headers.update({"Authorization": "Bearer {0}".format(token)})
         return token
+
+    # Events / alerts
+
+    def notify_message_broker(self, topic, event_data):
+        ev_producer = SOProducer(topic)
+        ev_producer.write(event_data)
 
     # Packages
 
@@ -497,6 +522,10 @@ class OSM():
                                 headers=self.headers,
                                 verify=False)
         actions_resp = response.json()
+        if actions_resp is None or actions_resp == []:
+            raise osm_exception.OSMResourceNotFound({
+                "error": "NS with id={} does not exist".format(nsi_id)
+                + " or has not received action requests"})
         actions_ret_list = []
         for action in actions_resp:
             action_type = action.get("lcmOperationType")
@@ -505,12 +534,13 @@ class OSM():
             action_status = action.get("operationState").lower()
             action_exec_time = TimeHandling.ms_to_rfc3339(
                     action.get("startTime"))
-            action_ret = {"id": action.get("_id"),
-                          "start-time": action_exec_time,
-                          "type": action_type,
-                          "params": action.get("operationParams"),
-                          "status": action_status
-                          }
+            action_ret = {
+                    "id": action.get("_id"),
+                    "start-time": action_exec_time,
+                    "type": action_type,
+                    "params": action.get("operationParams"),
+                    "status": action_status
+                         }
             if action_status == "failed":
                 action_ret.update({
                     "error": action.get("errorMessage")})
@@ -518,10 +548,22 @@ class OSM():
         actions_ret.update({"actions": actions_ret_list})
         return {"status": HttpCode.OK, **actions_ret}
 
+    # Called externally
     def apply_action(self, nsi_id, inst_md):
         if "ns-action-name" not in inst_md.keys():
             return
+        # Check whether NS instance exists
+        nss = self.get_ns_instances(nsi_id)
+        if nss is None:
+            raise osm_exception.OSMResourceNotFound(
+                {"error": "NS with id={} does not exist"
+                  .format(nsi_id)})
+        # If the NS instance exists, trigger the action
         target_status = None
+        output = {
+            "status": HttpCode.ACCEPTED, "id": nsi_id,
+            **inst_md
+        }
         if self.deployment_expected_status in inst_md:
             target_status = inst_md.get("target_status")
         # Passing also current_app._get_current_object() (flask global context)
@@ -534,29 +576,29 @@ class OSM():
                                    current_app._get_current_object(),
                                    target_status))
         t.start()
-        return {"status": HttpCode.ACCEPTED, "id": nsi_id, **inst_md}
+        return output
 
     def monitor_ns_deployment(self, nsi_id, action_name, action_params,
                               app, target_status=None):
-        timeout = self.monitoring_timeout
+        output = {"status": HttpCode.ACCEPTED}
+        timeout = self.timing_to_inst
         action_submitted = False
         # A name for the action must be provided at least
         if action_name is None:
             return action_submitted
         while not action_submitted:
-            sleep(self.monitoring_interval)
-            timeout = timeout-self.monitoring_interval
+            sleep(self.timing_interval)
+            timeout = timeout-self.timing_interval
             # print("Checking {0} {1} {2}".format(nsi_id, action, params))
             try:
                 nss = self.get_ns_instances(nsi_id)
-                LOGGER.debug("Monitored list of NSs={}".format(nss))
             except osm_exception.OSMException:
                 LOGGER.info("No instance found, aborting configuration")
                 break
             if timeout < 0:
                 LOGGER.info("Timeout reached, aborting thread")
                 break
-            if not nss:
+            if nss is None:
                 LOGGER.info("No instance found, aborting thread")
                 break
             # operational_status = nss.get("operational-status", "")
@@ -566,12 +608,40 @@ class OSM():
                 operational_status))
             if operational_status == "failed":
                 LOGGER.info("Instance failed, aborting")
+                output.update({
+                    "status": HttpCode.INTERNAL_ERROR,
+                    "error": "NS instance {} is in failed state".format(nsi_id)
+                })
                 break
+            # When target is met and NS instance is running...
             if operational_status == self.deployment_expected_status:
                 payload = {"action": action_name,
                            "params": action_params}
                 # Execute the specific action at the NS instance
                 output = self.exec_action_on_ns(nsi_id, payload)
+                # Send notification to TAR/AE - if set to active
+                if self.events_active:
+                    infra_url = "http://{}:{}/mon/infra/service?id={}".format(
+                                "so-mon",
+                                self.api_cat_section.get("mon").get("port"),
+                                nsi_id)
+                    response = requests.get(infra_url,
+                                            verify=False)
+                    infra_data = response.json()
+                    # Filter infrastructure with non-existing servicesi
+                    infra_data = list(filter(
+                        lambda x: len(x.get("ns")) > 0,
+                        infra_data.get("infrastructures")))
+                    infra_data = list(filter(
+                        lambda x: nsi_id in
+                        [x_.get("ns-id") for x_ in x.get("ns")],
+                        infra_data))
+                    if len(infra_data) > 0:
+                        infra_data = infra_data[0]
+                    if infra_data is not None:
+                        self.notify_message_broker(self.events_topics_inst_ae,
+                                                   infra_data)
+
 #                if action is not None:
 #                    app.mongo.store_vnf_action(vnf_instance,
 #                                               action,
@@ -581,7 +651,7 @@ class OSM():
                     "Action performed and stored, exiting thread")
                 LOGGER.info(output)
                 action_submitted = True
-        return action_submitted
+        return output
 
     @check_authorization
     def create_ns_instance(self, inst_md):
@@ -607,7 +677,6 @@ class OSM():
         ns_sshkeys = inst_md.get("ssh-keys")
         ns_action_name = inst_md.get("ns-action-name")
         ns_action_params = inst_md.get("ns-action-params")
-        LOGGER.info("VIM ID = {0}".format(vim_id))
         nsi_data = {}
         if ns_pkg_id is not None:
             nsi_data.update({"nsdId": ns_pkg_id})
@@ -641,7 +710,7 @@ class OSM():
             if "Invalid vimAccountId" in detail:
                 raise osm_exception.OSMResourceNotFound(
                     {"error": "VIM with id={} does not exist"
-                      .format(ns_pkg_id)})
+                      .format(vim_id)})
         elif status_code == 404:
             if "any nsd with filter" in detail:
                 raise osm_exception.OSMResourceNotFound(
@@ -666,23 +735,25 @@ class OSM():
         #                            current_app._get_current_object(),
         #                            self.deployment_expected_status)
 
-        success_msg = {"id": nsr_id,
-                       "status": HttpCode.ACCEPTED}
-        if detail is not None:
-            success_msg.update({"detail": detail})
-        return success_msg
-
-        if response_data.status_code >= 200 and\
-                response_data.status_code < 400:
+        if status_code >= 200 and status_code < 400:
             success_msg = {"name": ns_name,
                            "id": response_data.get("id"),
                            "ns-pkg-id": ns_pkg_id,
-                           "vim-id": vim_id,
                            "status": HttpCode.ACCEPTED}
+            if nsi_data.get("nsDescription") is not None:
+                success_msg["description"] = nsi_data.get("nsDescription")
+            if nsi_data.get("vimAccountId") is not None:
+                success_msg["vim-id"] = nsi_data.get("vimAccountId")
+            if nsi_data.get("ssh_keys") is not None:
+                success_msg["ssh-keys"] = nsi_data.get("ssh_keys")
+            if ns_action_name is not None:
+                success_msg["action-name"] = ns_action_name
+            if ns_action_params is not None:
+                success_msg["action-params"] = ns_action_params
             return success_msg
         else:
             error_msg = {"status": response_data.status.code,
-                         "error": response_data}
+                         "error": detail}
             return error_msg
 
     @check_authorization
@@ -698,7 +769,7 @@ class OSM():
 
     @check_authorization
     def monitor_ns_deletion(self, nsi_id, force=False):
-        timeout = self.monitoring_timeout
+        timeout = self.timing_to_del
         inst_url = "{0}/{1}".format(self.url_nsi_list,
                                     nsi_id)
         while timeout > 0:
@@ -717,7 +788,7 @@ class OSM():
                 LOGGER.error("Cannot retrieve status for ns={0}. Details={1}".
                              format(nsi_id, e))
                 break
-            timeout -= 1
+            timeout -= self.timing_interval
             sleep(1)
         if force:
             inst_url = "{}?FORCE=true".format(inst_url)
@@ -936,15 +1007,15 @@ class OSM():
                     "status": HttpCode.METH_NOT_ALLOW}
         data = {}
         if action_name == "terminate":
-            data = {"timeout_ns_terminate": 1,
+            data = {
+                    "timeout_ns_terminate": self.timing_to_act,
                     "autoremove": False,
-                    # NB: enabling the one below is likely a cause for errors
-                    "skip_terminate_primitives": False
-                    }
+                    "skip_terminate_primitives": True
+                   }
         elif action_name == "scale":
             data = {
                      "scaleType": "SCALE_VNF",
-                     "timeout_ns_scale": 0,
+                     "timeout_ns_scale": self.timing_to_sca,
                      "scaleVnfData": {
                        "scaleVnfType": "SCALE_IN",
                        "scaleByStepData": {
@@ -974,6 +1045,7 @@ class OSM():
         return {"id": nsi_id, "status": http_code}
 
     @check_authorization
+#    @test_topic(some="value")
     def exec_action_on_ns(self, nsi_id, payload):
         # nsd = self.get_ns_descriptor(nsi_id)
         primitive_name = payload.get("action")

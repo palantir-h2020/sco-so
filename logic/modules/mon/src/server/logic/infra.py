@@ -39,6 +39,21 @@ class Infra(object):
                         reachable. Details: {}".format(infra_id, str(e)),
                       "status": HttpCode.NET_CONN_TIMEOUT})
 
+    def _check_output_contains_req_ns(self, nsi_id, infra_list):
+        filtered_infra = infra_list
+        if not any(filter(lambda x: len(x.get("ns")) > 0, infra_list)):
+            raise SONotFoundException(
+                {"error": "NS instance with id={} ".format(nsi_id) +
+                          "is not running in any managed infrastructure",
+                 "status": HttpCode.NOT_FOUND})
+        if nsi_id is not None:
+            filtered_infra = list(filter(
+                lambda x: nsi_id in [x_.get("ns-id") for x_ in x.get("ns")],
+                infra_list))
+        if isinstance(filtered_infra, list) and len(filtered_infra,) == 1:
+            filtered_infra = filtered_infra[0]
+        return filtered_infra
+
     def infra_describe(self, infra_id: str) -> dict():
         # Parameters defined under /usr/local/lib/python3.8/
         # site-packages/kubernetes/client/api/core_v1_api.py
@@ -47,27 +62,27 @@ class Infra(object):
                 filter(lambda x: infra_id == x.get("id"),
                        self.infrastructures))
             if len(infra_list) != 1:
-                raise SOConfigException(
-                        {"error": "Infrastructure {} not defined in cfg file"
-                            .format(infra_id),
-                            "status": HttpCode.IMPROPER_USAGE})
+                raise SOConfigException({
+                    "error": "Infrastructure with id={} ".format(infra_id)
+                    + "not defined in cfg file",
+                    "status": HttpCode.INTERNAL_ERROR})
         except Exception as e:
             raise SONotFoundException(
-                    {"error": "Non-existing infra_id: {}. Details: {}"
-                        .format(infra_id, str(e)),
-                        "status": HttpCode.NOT_FOUND})
+                {"error": "Non-existing infra_id: {}. Details: {}"
+                    .format(infra_id, str(e)),
+                 "status": HttpCode.NOT_FOUND})
         try:
             return self.k8s_clients[infra_id].nodes_describe(infra_id)
         except KeyError:
             raise SOConfigException(
-                    {"error": "Infrastructure {}".format(infra_id) +
-                              "not properly defined or initialised",
-                        "status": HttpCode.IMPROPER_USAGE})
+                {"error": "Infrastructure with id={}".format(infra_id) +
+                          "not properly defined or initialised",
+                 "status": HttpCode.INTERNAL_ERROR})
         except ConnectionRefusedError as e:
             raise SONetworkConnectionException(
                 {"error": "Infrastructure with infra_id: {} may not be \
                     reachable. Details: {}".format(infra_id, str(e)),
-                    "status": HttpCode.NET_CONN_TIMEOUT})
+                 "status": HttpCode.NET_CONN_TIMEOUT})
 
     # Called externally
     def infra_list(self, infra_id: str = None) -> list():
@@ -91,13 +106,13 @@ class Infra(object):
             infra_res = {}
         if len(result.get("infrastructures")) == 0:
             raise SONotFoundException(
-                 {"error": "Non-existing infrastructure for " +
+                 {"error": "Non-existing infrastructure with " +
                            "id: {}".format(infra_id),
                   "status": HttpCode.NOT_FOUND})
         return result
 
-    # Called externally
-    def service_list(self, infra_id: str, ns_id: str = None) -> list():
+    def service_list_by_infra(self, infra_id: str, ns_id: str = None,
+                              single_infra: bool = False) -> list():
         service_struct = {"ns": [], "infra-id": infra_id}
         namespace_id = None
         if ns_id is not None:
@@ -117,11 +132,11 @@ class Infra(object):
             raise SOConfigException(
                     {"error": "Infrastructure {}".format(infra_id) +
                               "not properly defined or initialised",
-                        "status": HttpCode.IMPROPER_USAGE})
+                        "status": HttpCode.INTERNAL_ERROR})
         pods_filter_ns = []
         pods_filter_pod = []
         namespaces_filter = []
-        # If no service -id is provided, all feasible namespaces will be used
+        # If no service-id is provided, all feasible namespaces will be used
         if ns_id is None:
             for namespace in namespaces:
                 ns_id_valid = "-".join(namespace.split("-")[-5:])
@@ -135,7 +150,7 @@ class Infra(object):
         else:
             namespaces_filter = namespaces
 
-        if len(namespaces_filter) == 0:
+        if len(namespaces_filter) == 0 and ns_id is not None and single_infra:
             raise SONotFoundException(
                  {"error": "Non-existing service (id: " +
                      "{}) for infrastructure with id: {}"
@@ -148,7 +163,7 @@ class Infra(object):
                 raise SOConfigException(
                         {"error": "Infrastructure {}".format(infra_id) +
                                   "not properly defined or initialised",
-                            "status": HttpCode.IMPROPER_USAGE})
+                            "status": HttpCode.INTERNAL_ERROR})
             for pod_iter in pods:
                 pod_iter_namespace = pod_iter.get("namespace")
                 if namespace == pod_iter_namespace:
@@ -190,3 +205,28 @@ class Infra(object):
             ns_desc.get("pods").append(pod_desc)
             service_struct.get("ns").append(ns_desc)
         return service_struct
+
+    # Called externally
+    def service_list(self, infra_id: str = None, ns_id: str = None) -> list():
+        if infra_id is None:
+            infra_list = []
+            for _infra_id, _ in self.k8s_clients.items():
+                # 3rd param signals this is not requesting a specific infra
+                ns_by_infra = self.service_list_by_infra(
+                        _infra_id, ns_id, False)
+                infra_list.append(ns_by_infra)
+            # Check the output contains the required NS
+            infra_list = self._check_output_contains_req_ns(ns_id, infra_list)
+            return {"infrastructures": infra_list}
+        else:
+            if infra_id not in self.k8s_clients.keys():
+                raise SONotFoundException(
+                    {"error": "Non-existing infrastructure with id: {}"
+                        .format(infra_id),
+                        "status": HttpCode.NOT_FOUND})
+                return {"infra-id": infra_id, "ns": []}
+            # 3rd param signals this is indeed requesting a specific infra
+            output = self.service_list_by_infra(infra_id, ns_id, True)
+            # Check the output contains the required NS
+            output = self._check_output_contains_req_ns(ns_id, [output])
+            return output

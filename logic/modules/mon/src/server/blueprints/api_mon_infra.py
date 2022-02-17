@@ -18,13 +18,13 @@ infra_handler = Infra()
 @so_blueprints.route(SOEndpoints.MON_INFRA, methods=["GET"])
 @exception.handle_exc_resp
 def infra_list() -> HttpResponse:
-    infra_id = request.args.get("id")
-    return infra_handler.infra_list(infra_id)
+    _infra_id = request.args.get("id")
+    return infra_handler.infra_list(_infra_id)
 
 
 @so_blueprints.route(SOEndpoints.MON_INFRA_SVC, methods=["GET"])
 @exception.handle_exc_resp
 def infra_service_list() -> HttpResponse:
-    infra_id = request.args.get("infra-id")
-    service_id = request.args.get("service-id")
-    return infra_handler.service_list(infra_id, service_id)
+    _id = request.args.get("id")
+    _infra_id = request.args.get("infra-id")
+    return infra_handler.service_list(_infra_id, _id)

@@ -26,14 +26,16 @@ class SOProducer():
 
     def __init__(self, topic: str = None):
         self.config = FullConfParser()
-        self.kafka_category = self.config.get("events.yaml")
-        self.host = self.kafka_category.get("host")
-        self.port = int(self.kafka_category.get("port"))
+        self.events_category = self.config.get("events.yaml")
+        self.kafka_section = self.events_category.get("kafka")
+        self.host = self.kafka_section.get("host")
+        self.port = int(self.kafka_section.get("port"))
         # Note: value_serializer implies writing everything as JSON
         self.producer = KafkaProducer(
                 bootstrap_servers=["{}:{}".format(self.host, self.port)],
                 value_serializer=lambda v: json.dumps(v).encode("utf-8")
                 )
+        self.topic = topic
 
     def write(self, data):
         # Enforce writing in JSON as much as possible

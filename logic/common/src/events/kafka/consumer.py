@@ -24,9 +24,10 @@ class SOConsumer():
 
     def __init__(self, topic: str = None):
         self.config = FullConfParser()
-        self.kafka_category = self.config.get("events.yaml")
-        self.host = self.kafka_category.get("host")
-        self.port = int(self.kafka_category.get("port"))
+        self.events_category = self.config.get("events.yaml")
+        self.kafka_section = self.events_category.get("kafka")
+        self.host = self.kafka_section.get("host")
+        self.port = int(self.kafka_section.get("port"))
         self.consumer = KafkaConsumer(
                 topic,
                 bootstrap_servers=["{}:{}".format(self.host, self.port)],
@@ -34,11 +35,10 @@ class SOConsumer():
                 auto_offset_reset="earliest",
                 enable_auto_commit=True)
         # value_deserializer=lambda x: json.loads(x.decode("utf-8")))
+        self.topic = topic
 
     def read_wait(self):
         for msg in self.consumer:
-            print(msg)
-            # TODO test either return or yield
             yield msg
             # return msg
 

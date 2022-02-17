@@ -7,6 +7,7 @@ from common.exception import exception
 from common.nfv.nfv.ns import OSMInterfaceNS
 from common.server.endpoints import SOEndpoints
 from flask import Blueprint, request
+import json
 
 
 so_blueprints = Blueprint("so__lcm__ns", __name__)
@@ -29,11 +30,12 @@ def list_ns():
 @so_blueprints.route(SOEndpoints.LCM_NS, methods=["POST"])
 @exception.handle_exc_resp
 def instantiate_ns():
-    request_params = None
-    for data in [request.data, request.form.to_dict(), request.values,
-                 request.json]:
-        if check_req_data_valid(data) and request_params is None:
-            request_params = data
+    request_params = request.form.to_dict()
+    try:
+        request_params["ns-action-params"] = json.loads(
+            request_params.get("ns-action-params"))
+    except Exception:
+        pass
     ns_obj = OSMInterfaceNS()
     return ns_obj.instantiate_ns(request_params)
 
@@ -63,10 +65,11 @@ def fetch_actions_on_ns():
 @exception.handle_exc_resp
 def trigger_action_on_ns():
     _id = request.args.get("id")
-    request_params = None
-    for data in [request.data, request.form.to_dict(), request.values,
-                 request.json]:
-        if check_req_data_valid(data) and request_params is None:
-            request_params = data
+    request_params = request.form.to_dict()
+    try:
+        request_params["ns-action-params"] = json.loads(
+            request_params.get("ns-action-params"))
+    except Exception:
+        pass
     ns_obj = OSMInterfaceNS()
     return ns_obj.apply_action(_id, request_params)

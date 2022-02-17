@@ -40,13 +40,17 @@ def infra_list(request: Request, id: Optional[str] = None):
 
 @router.get(SOEndpoints.INFRA_SVC, status_code=HttpCode.OK)
 @exception.handle_exc_resp
-def infra_service_list(request: Request, infra_id: str,
-                       service_id: Optional[str] = None):
+def infra_service_list(request: Request, infra_id: Optional[str] = None,
+                       id: Optional[str] = None):
     """
     Details on services (NS) running in the infrastructure.
     """
     requests_ep = "{}/infra/service".format(ep_base)
-    requests_ep = "{}?infra-id={}".format(requests_ep, infra_id)
-    if service_id is not None:
-        requests_ep = "{}&service-id={}".format(requests_ep, service_id)
+    if infra_id is not None:
+        requests_ep = "{}?infra-id={}".format(requests_ep, infra_id)
+        if id is not None:
+            requests_ep = "{}&id={}".format(requests_ep, id)
+    else:
+        if id is not None:
+            requests_ep = "{}?id={}".format(requests_ep, id)
     return requests.get(requests_ep)

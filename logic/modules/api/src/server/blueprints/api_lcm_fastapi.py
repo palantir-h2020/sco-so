@@ -5,16 +5,15 @@
 # All rights reserved
 
 
-# from blueprints.schemas.mon_infra import \
-#      MonitoringInfrastructure as MonInfraSchema
+from blueprints.schemas.lcm_ns import NSInstanceAction, \
+        NSInstanceDeployment
 from common.config.api.api_categories import APICategories
 from common.exception import exception
-# from common.server.http import content
 from common.server.http.http_code import HttpCode
-# from common.server.http.http_response_fastapi import HttpResponse
 from common.server.endpoints import SOEndpoints
-from fastapi import APIRouter, Query, Request
-from typing import List, Optional
+from fastapi import APIRouter, Request
+from typing import Optional
+import json
 import requests
 
 
@@ -37,9 +36,6 @@ def ns_inst_list(request: Request,
     """
     Details on NS running instances.
     """
-    # content_type = "application/json"
-    # if "content-type" in request.headers:
-    #     content_type = request.headers.get("content-type")
     requests_ep = "{}/ns".format(ep_base)
     if id is not None:
         requests_ep = "{}?id={}".format(requests_ep, id)
@@ -49,28 +45,31 @@ def ns_inst_list(request: Request,
 @router.post(SOEndpoints.NS, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def ns_inst_deploy(request: Request, ns_pkg_id: str,
-                   vim_id: Optional[str] = None,
-                   name: Optional[str] = None,
-                   description: Optional[str] = None,
-                   ssh_key: Optional[List[str]] = Query(None),
-                   action_name: Optional[str] = None,
-                   action_params: Optional[str] = None,
+                   deploy_data: NSInstanceDeployment = None,
                    ):
     """
     Instantiate a new NS.
     """
     requests_ep = "{}/ns".format(ep_base)
     params_dict = {
-        "ns-pkg-id": ns_pkg_id, "vim-id": vim_id, "name": name,
-        "description": description, "ssh-keys": ssh_key,
-        "ns-action-name": action_name, "ns-action-params": action_params
+        "ns-pkg-id": ns_pkg_id, "description": deploy_data.description,
+        "vim-id": deploy_data.vim_id, "name": deploy_data.name,
+        "ssh-keys": deploy_data.ssh_key,
+        "ns-action-name": deploy_data.action_name,
+        "ns-action-params": deploy_data.action_params
     }
+    try:
+        params_dict["ns-action-params"] = json.dumps(
+            params_dict.get("ns-action-params"))
+    except Exception:
+        pass
     return requests.post(requests_ep, data=params_dict)
 
 
 @router.delete(SOEndpoints.NS, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
-def ns_inst_delete(request: Request, id: str, force: Optional[bool]):
+def ns_inst_delete(request: Request, id: str,
+                   force: Optional[str] = False):
     """
     Delete running NS instance.
     """
@@ -92,8 +91,8 @@ def ns_inst_get_actions(request: Request, id: str):
 
 @router.post(SOEndpoints.LCM_ACT, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
-def ns_inst_exec_action(request: Request, id: str, action_name: str,
-                        action_params: Optional[str] = None,
+def ns_inst_exec_action(request: Request, id: str,
+                        action_data: NSInstanceAction = None,
                         ):
     """
     Execute action in specific NS.
@@ -102,8 +101,14 @@ def ns_inst_exec_action(request: Request, id: str, action_name: str,
     """
     requests_ep = "{}/ns/action?id={}".format(ep_base, id)
     action_dict = {
-        "ns-action-name": action_name, "ns-action-params": action_params
+        "ns-action-name": action_data.action_name,
+        "ns-action-params": action_data.action_params
     }
+    try:
+        action_dict["ns-action-params"] = json.dumps(
+            action_dict.get("ns-action-params"))
+    except Exception:
+        pass
     return requests.post(requests_ep, data=action_dict)
 
 
