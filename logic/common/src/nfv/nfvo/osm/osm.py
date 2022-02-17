@@ -871,16 +871,33 @@ class OSM():
         if vim_detail is not None and "name" in vim_detail.keys():
             vim_name = vim_detail.get("name")
         creation_time = TimeHandling.ms_to_rfc3339(nsi.get("create-time"))
+        nsi_id = nsi.get("id")
         out_nsi.update({
             "creation-time": creation_time,
-            "ns-id": nsi.get("id"),
-            "xnfd-id": nsi.get("vnfd-id"),
-            "ns-name": nsi.get("name"),
+            "id": nsi_id,
+            "name": nsi.get("name"),
+            "package": {
+                "id": nsi.get("nsd-id"),
+                "name": nsi.get("nsd-ref"),
+            },
+            "xnf": {
+                "id": nsi.get("constituent-vnfr-ref"),
+                # "xnfd-id": nsi.get("vnfd-id"),
+            },
             "status": {
                 "config": nsi.get("config-status"),
                 "operational": nsi.get("operational-status")
             }
         })
+        actions = {}
+        try:
+            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
+            for vca_app_name, vca_app_cfg in vca_apps.items():
+                actions.update(vca_app_cfg.get("actions"))
+        except Exception:
+            pass
+        if len(actions) > 0:
+            out_nsi.update({"actions": actions})
         vim_dict = {}
         if vim_id is not None:
             vim_dict.update({"id": vim_id})
@@ -937,10 +954,15 @@ class OSM():
         creation_time = TimeHandling.ms_to_rfc3339(xnfi.get("created-time"))
         out_xnfi.update({
             "creation-time": creation_time,
-            "xnf-id": xnfi.get("id"),
-            "xnfd-id": xnfi.get("vnfd-ref"),
-            "ns-id": ns_id,
-            "ns-name": ns_name,
+            "id": xnfi.get("id"),
+            "package": {
+                "id": xnfi.get("vnfd-id"),
+                "name": xnfi.get("vnfd-ref"),
+            },
+            "ns": {
+                "id": ns_id,
+                "name": ns_name,
+            },
             "ip": ip,
             "status": {
                 "config": xdur.get("status"),
