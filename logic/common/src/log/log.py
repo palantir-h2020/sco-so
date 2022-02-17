@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -20,7 +20,7 @@ def setup_custom_logger(name):
     log_path = "logs/{0}.log".format(name)
     if not os.path.exists("logs"):
         os.makedirs("logs")
-    with open(log_path, "w") as log_file:
+    with open(log_path, "w"):
         pass
     handler = logging.FileHandler(log_path, mode="a")
     handler.setFormatter(formatter)

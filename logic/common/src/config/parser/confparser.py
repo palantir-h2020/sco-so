@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -34,12 +34,13 @@ class IniParser(BaseParser):
             except AttributeError:
                 confparser = ConfigParser()
             # Parse data previously to ignore tabs, spaces or others
-            conf_data = StringIO("\n".join(l.strip() for l in open(self.path)))
+            conf_data = StringIO("\n".join(
+                line.strip() for line in open(self.path)))
             parse_ok = True
             try:
                 confparser.readfp(conf_data)
             # Error reading: eg. bad value substitution (bad format in strings)
-            except ConfigParser.InterpolationMissingOptionError as e:
+            except ConfigParser.InterpolationMissingOptionError:
                 confparser.read(conf_data)
                 parse_ok = False
             # Do some post-processing of the conf sections
@@ -51,7 +52,8 @@ class IniParser(BaseParser):
             sys.exit(exception_desc)
         self.__dict__.update(self.settings)
 
-    def __process_conf_sections(self, confparser: ConfigParser, parse_ok: bool = True):
+    def __process_conf_sections(self, confparser: ConfigParser,
+                                parse_ok: bool = True):
         """
         Parses every setting defined in a config file.
 

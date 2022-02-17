@@ -1,14 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
+
+from common.config.parser.fullparser import FullConfParser
 import os
 import paramiko
 import time
-
-from common.config.parser.fullparser import FullConfParser
 
 
 class ExecuteCommand:
@@ -28,13 +28,15 @@ class ExecuteCommand:
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(vnf_ip, username=user_name, key_filename=key_filename)
+            client.connect(vnf_ip, username=user_name,
+                           key_filename=key_filename)
             STDIN, STDOUT, STDERR = client.exec_command(command)
             time.sleep(1)
             COMMAND_RESPONSE = STDOUT.read().decode()
             client.close()
             return COMMAND_RESPONSE
-        except:
-            return "{} is unreachable. Please verify the connection, otherwise check target-mon key".format(
-                vnf_ip
-            )
+        except Exception:
+            return "{} is unreachable. {} {}".format(
+                    vnf_ip,
+                    "Please verify the connection, otherwise",
+                    "check \"target-mon\" key")

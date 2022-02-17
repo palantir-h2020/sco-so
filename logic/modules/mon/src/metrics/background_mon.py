@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -34,7 +34,8 @@ class BackgroundMonitoring:
 
         while True:
             data = command_req.metric_remote_command(request)
-            # data = multiprocessing.Process(target=command_req.metric_remote_command(request))
+            # data = multiprocessing.Process(
+            #        target=command_req.metric_remote_command(request))
             # data.start()
             # data.join()
             sleep_time = monitoring_period - (

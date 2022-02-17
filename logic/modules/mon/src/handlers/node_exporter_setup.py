@@ -1,11 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
 
-from common.db.models.prometheus_targets import PrometheusTargets
 from metrics.execute_command import ExecuteCommand
 
 
@@ -47,9 +46,11 @@ class NodeExporterSetup:
                 vnf_list_response = []
                 for target in vnf_ip:
                     command = self.node_exporter_docker_cmd
-                    vnf_response = ExecuteCommand.execute_command(target, command)
+                    vnf_response = ExecuteCommand.execute_command(
+                            target, command)
                     vnf_list_response.append(vnf_response)
-                return "Node Exporter Installation status on VNF(s) {}: {}".format(vnf_ip, vnf_list_response)
+                return "Node Exporter Installation status on VNF(s) {}: {}"\
+                       .format(vnf_ip, vnf_list_response)
             else:
                 return "vnf_ip must be a list"
         if request.method == "DELETE":
@@ -57,8 +58,10 @@ class NodeExporterSetup:
                 vnf_list_response = []
                 for target in vnf_ip:
                     command = self.node_exporter_uninstall_cmd
-                    vnf_response = ExecuteCommand.execute_command(target, command)
+                    vnf_response = ExecuteCommand.execute_command(
+                            target, command)
                     vnf_list_response.append(vnf_response)
-                return "Node Exporter Uninstall status on VNF(s) {}: {}".format(vnf_ip, vnf_list_response)
+                return "Node Exporter Uninstall status on VNF(s) {}: {}"\
+                       .format(vnf_ip, vnf_list_response)
             else:
                 return "vnf_ip must be a list"

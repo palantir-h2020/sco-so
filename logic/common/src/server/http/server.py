@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -11,7 +11,6 @@ sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
 
 from flask import Blueprint
-#from gui.swagger import swagger_views as v_gui
 from common.server.http.server_cfg import ServerConfig
 from werkzeug import serving
 
@@ -37,17 +36,20 @@ class Server(object):
 
     def __load__blueprint_modules(self):
         # Load from relative path (in the same folder as current file)
-        #blueprints_path = os.path.normpath(os.path.join(
-        #            os.path.dirname(__file__), "blueprints"))
-        # Load from relative path (in the same folder as the main.py entry point)
+        # blueprints_path = os.path.normpath(os.path.join(
+        #             os.path.dirname(__file__), "blueprints"))
+        # Load from relative path (in same folder as main.py - entry point)
         blueprints_path = os.path.normpath(os.path.join(".", "blueprints"))
         blueprint_elems = []
         if os.path.isdir(blueprints_path):
-           blueprint_elems = filter(lambda x: "__" not in x and x.endswith(".py"), os.listdir(blueprints_path))
+            blueprint_elems = filter(
+                    lambda x: "__" not in x and x.endswith(".py"),
+                    os.listdir(blueprints_path))
         self.blueprints = dict()
         for blueprint_elem in blueprint_elems:
             mod_name = blueprint_elem.replace(".py", "")
-            self.blueprints[mod_name] = importlib.import_module("blueprints." + mod_name)
+            self.blueprints[mod_name] = importlib.import_module(
+                    "blueprints." + mod_name)
 
     @property
     def app(self):
@@ -59,12 +61,13 @@ class Server(object):
 
     def add_routes(self):
         """
-        New method. Allows to register URLs from the blueprint files defined under
-        the "blueprints" folder, in the same directory as this file.
+        New method. Allows registering URLs from the blueprint files defined
+        under the "blueprints" folder, in the same directory as this file.
         """
         for mod_name in self.blueprints.keys():
             if mod_name not in sys.modules:
-                loaded_mod = __import__("blueprints" + "." + mod_name, fromlist=[mod_name])
+                loaded_mod = __import__("blueprints" + "." + mod_name,
+                                        fromlist=[mod_name])
                 for obj in vars(loaded_mod).values():
                     if isinstance(obj, Blueprint):
                         self._app.register_blueprint(obj)

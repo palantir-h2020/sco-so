@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -107,7 +107,7 @@ def convert_to_json(data) -> dict:
 
 def convert_to_yaml(data) -> str:
     if isinstance(data, bytes):
-        result = result.decode("ascii")
+        data = data.decode("ascii")
     if isinstance(data, str):
         data = convert_to_json(data)
     if isinstance(data, dict):
@@ -119,17 +119,15 @@ def convert_to_yaml(data) -> str:
 
 
 def convert_to_ct(data, accept_type: str):
-    print(".....................................>")
-    print("........ accept_type={}..............>".format(accept_type))
-    print(".....................................>")
     # Enforce JSON by default when no specific preferences are provided
     if accept_type == AllowedContentTypes.CONTENT_TYPE_ANY.value:
         accept_type = AllowedContentTypes.CONTENT_TYPE_JSON.value
     if AllowedContentTypes.CONTENT_TYPE_YAML.value in accept_type:
         return convert_to_yaml(data)
-    elif any(map(lambda x: x in accept_type,
-            [AllowedContentTypes.CONTENT_TYPE_JSON.value,
-             AllowedContentTypes.CONTENT_TYPE_TEXT.value])):
+    elif any(map(
+        lambda x: x in accept_type,
+        [AllowedContentTypes.CONTENT_TYPE_JSON.value,
+            AllowedContentTypes.CONTENT_TYPE_TEXT.value])):
         return data
     else:
         raise Exception("Unsupported or non-existing " +

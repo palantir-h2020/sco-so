@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -6,6 +6,7 @@
 
 from mongoengine import DateField, Document,\
     StringField
+
 
 class PushgatewayResponse(Document):
     """
@@ -17,4 +18,3 @@ class PushgatewayResponse(Document):
     metric_name = StringField()
     vnf_id = StringField()
     vnf_ip = StringField()
-    

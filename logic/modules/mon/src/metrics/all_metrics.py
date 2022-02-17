@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -36,12 +36,18 @@ class AllMetrics():
         try:
             data_list = []
             for i in RemoteCommand.objects:
-                data_list.append(RemoteCommand.objects.order_by("vnf_id").first().vnf_id)
-                data_list.append(RemoteCommand.objects.order_by("metric_name").first().metric_name)
-                data_list.append(RemoteCommand.objects.order_by("metric_command").first().metric_command)
-                data_list.append(RemoteCommand.objects.order_by("data").first().data)
+                data_list.append(
+                        RemoteCommand.objects.order_by("vnf_id").first()
+                        .vnf_id)
+                data_list.append(
+                        RemoteCommand.objects.order_by("metric_name")
+                        .first().metric_name)
+                data_list.append(
+                        RemoteCommand.objects.order_by("metric_command")
+                        .first().metric_command)
+                data_list.append(
+                        RemoteCommand.objects.order_by("data")
+                        .first().data)
             return data_list
-                 
         except Exception:
             return []
-       

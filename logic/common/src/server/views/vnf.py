@@ -1,11 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
-
-import json
 
 from common.exception.exception import SOException
 from common.server.http import content
@@ -15,6 +13,7 @@ from common.server.endpoints import VnsfoEndpoints as endpoints
 from flask import Blueprint
 from flask import request
 from nfv.vnf import VnsfoVnsf
+import json
 
 so_views = Blueprint("so_vnf_views", __name__)
 

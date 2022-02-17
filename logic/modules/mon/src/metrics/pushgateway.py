@@ -1,15 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
-from datetime import datetime
-
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
 from common.db.models.pushgateway_req import PushgatewayRequest
 from common.db.models.pushgateway_res import PushgatewayResponse
+from datetime import datetime
 from .execute_command import ExecuteCommand
 from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
 
@@ -61,7 +60,8 @@ class Pushgateway():
         self.metric_name = request_body.get("metric-name")
         self.metric_command = request_body.get("metric-command")
 
-        targets_list = PrometheusTargets.objects.order_by("-id").first().targets
+        targets_list = PrometheusTargets.objects.order_by("-id")\
+            .first().targets
         if self.vnf_id in targets_list:
             self.persist_requests_mongodb()
             self.parser()
@@ -84,13 +84,17 @@ class Pushgateway():
                 self.persist_response_mongodb()
 
                 registry = CollectorRegistry()
-                g = Gauge(self.metric_name, self.metric_name, registry=registry)
+                g = Gauge(self.metric_name, self.metric_name,
+                          registry=registry)
                 g.set(self.data)
                 try:
-                    pushadd_to_gateway("localhost:9091", job=self.vnf_ip, registry=registry)
-                except:
-                    return "{} Pushgateway is not reachable, please check the connection ".format(
-                        self.pushgateway_server_endpoint
+                    pushadd_to_gateway("localhost:9091", job=self.vnf_ip,
+                                       registry=registry)
+                except Exception:
+                    return "{} {}. {}".format(
+                        self.pushgateway_server_endpoint,
+                        "Pushgateway is not reachable.",
+                        "Please check the connection"
                     )
                 return self.result
             else:

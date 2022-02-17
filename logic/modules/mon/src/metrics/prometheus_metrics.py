@@ -1,13 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
-import requests
 
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
+import requests
 
 
 class PrometheusMetrics():
@@ -36,7 +36,8 @@ class PrometheusMetrics():
         instance = request_body.get("vnf-ip")
         metric_name = request_body.get("metric-name")
 
-        targets_list = PrometheusTargets.objects.order_by("-id").first().targets
+        targets_list = PrometheusTargets.objects.order_by("-id")\
+            .first().targets
         if target_id in targets_list:
             # Execute the request
             self.client_query = "{}{}".format(
@@ -62,10 +63,11 @@ class PrometheusMetrics():
 
                 except KeyError:
                     # Print temporal, para pruebas.
-                    print("Cannot obtain given metric from instance={}".format(instance))
+                    print("Cannot obtain given metric from instance={}"
+                          .format(instance))
                     metrics_dict["metric-value"] = "N/A"
                 return metrics_dict
-            except:
+            except Exception:
                 return "Prometheus server is not running"
         else:
             return "{} target is not registered".format(target_id)

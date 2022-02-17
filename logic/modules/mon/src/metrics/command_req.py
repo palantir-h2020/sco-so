@@ -1,15 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
 # All rights reserved
 
-from datetime import datetime
-
 
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
 from common.db.models.remote_command import RemoteCommand
+from datetime import datetime
 from .execute_command import ExecuteCommand
 
 
@@ -32,7 +31,8 @@ class CommandReq():
         self.metric_name = request_body.get("metric-name")
         self.metric_command = request_body.get("metric-command")
 
-        targets_list = PrometheusTargets.objects.order_by("-id").first().targets
+        targets_list = PrometheusTargets.objects.order_by("-id")\
+            .first().targets
         if self.vnf_id in targets_list:
 
             parsed_metric_command = self.metric_command.split(";")
@@ -70,4 +70,3 @@ class CommandReq():
         remote_metric_model.data = self.data
         remote_metric_model.date = datetime.now()
         remote_metric_model.save()
-        

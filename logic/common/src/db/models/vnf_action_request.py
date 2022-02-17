@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -9,7 +9,6 @@ from mongoengine import DateTimeField
 from mongoengine import DictField
 from mongoengine import Document
 from mongoengine import StringField
-
 import datetime
 
 
