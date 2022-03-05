@@ -553,6 +553,13 @@ class OSM():
                                    headers=self.headers,
                                    verify=False)
         if response.status_code >= 200 and response.status_code < 300:
+            if self.events_active:
+                # Send notification to Portal
+                self.notify_message_broker_portal(
+                        "deboarding",
+                        "SC package with id={0} has been deboarded".
+                        format(descriptor_id),
+                        [])
             return {
                 "name": package_name, "id": descriptor_id,
                 "status": response.status_code}
@@ -691,8 +698,12 @@ class OSM():
                                 format(nsi_id),
                                 xni_ip)
                     # Send notification to TAR/AE
-                    if "deployment" in trigger_modes \
-                            and "action" not in trigger_modes:
+                    # (in case of trigger_modes=["deployment"]
+                    # or trigger_modes=["deployment", "action"]
+                    if ("deployment" in trigger_modes and
+                            "action" not in trigger_modes) or \
+                            ("deployment" in trigger_modes and
+                                "action" in trigger_modes):
                         self.notify_message_broker_ae(nsi_id)
 
                 # Execute action only if any provided
