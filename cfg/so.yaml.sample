@@ -1,3 +1,7 @@
+# SCO/SO configuration
+so:
+  ip: 10.101.41.168
+
 # OSM configuration
 osm:
   nbi:
@@ -7,7 +11,8 @@ osm:
     username: admin
     password: admin
   vim:
-    fallback: 74990d4d-e107-47e8-a2fc-30e1f4b206ac
+    fallback: f73942cc-de3e-4b5c-a5ac-8a98dcfe19bd
+#    fallback: 74990d4d-e107-47e8-a2fc-30e1f4b206ac
 
 # Timings used to check or wait for (async) operations
 timings:
@@ -27,6 +32,7 @@ events:
   active: true
   topics:
     instantiation-ae: ae.register-sc
+    actions-portal: actions-notifications
 
 # Network Function access
 xnfs:

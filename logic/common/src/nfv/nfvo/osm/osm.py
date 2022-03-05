@@ -75,6 +75,8 @@ class OSM():
     def __init__(self):
         self.config = FullConfParser()
         self.nfvo_category = self.config.get("so.yaml")
+        self.so_section = self.nfvo_category.get("so")
+        self.so_ip = self.so_section.get("ip")
         self.osm_section = self.nfvo_category.get("osm")
         self._read_cfg_osm(self.osm_section)
         self._create_ep_osm()
@@ -124,6 +126,8 @@ class OSM():
         self.topics_section = cfg_section.get("topics")
         self.events_topics_inst_ae = self.topics_section.get(
             "instantiation-ae")
+        self.events_topics_acts_portal = self.topics_section.get(
+            "actions-portal")
 
     def _read_cfg_xnfs(self, cfg_section: dict):
         cfg_xnfs_gen = cfg_section.get("general")
@@ -186,6 +190,49 @@ class OSM():
         ev_producer = SOProducer(topic)
         ev_producer.write(event_data)
 
+    def notify_message_broker_portal(self, action_name, description, ips):
+        if not isinstance(ips, list):
+            ips = [ips]
+        data = {
+                "componentType": "sco",
+                "componentId": "so",
+                "componentIP": self.so_ip,
+                "actionName": action_name,
+                "actionDescription": description,
+                "onIps": ips
+                }
+        self.notify_message_broker(self.events_topics_acts_portal, data)
+
+    def notify_message_broker_ae(self, nsi_id):
+        infra_url = "http://{}:{}/mon/infra/service?id={}".format(
+                    "so-mon",
+                    self.api_cat_section.get("mon").get("port"),
+                    nsi_id)
+        response = requests.get(infra_url, verify=False)
+        infra_data = response.json()
+        # Filter infrastructure with non-existing services
+        infra_data = infra_data.get("infrastructures")
+        if isinstance(infra_data, list):
+            infra_data = list(filter(
+                lambda x: len(x.get("ns")) > 0,
+                infra_data))
+            infra_data = list(filter(
+                lambda x: nsi_id in
+                [x_.get("ns-id") for x_ in x.get("ns")],
+                infra_data))
+        else:
+            infra_data = list(filter(
+                lambda x: len(x) > 0,
+                infra_data.get("ns")))
+            infra_data = list(filter(
+                lambda x: nsi_id == x.get("ns-id"),
+                infra_data))
+        if len(infra_data) > 0:
+            infra_data = infra_data[0]
+        if infra_data is not None:
+            self.notify_message_broker(self.events_topics_inst_ae,
+                                       infra_data)
+
     # Packages
 
     @check_authorization
@@ -219,23 +266,6 @@ class OSM():
                     xnfd.get("_id", None) == xnf_filter:
                 return xnfd
         return
-
-    @check_authorization
-    def get_xnf_descriptor_actions(self, xnfd_id):
-        xnfd_actions = []
-        xnfd_url = "{0}/{1}".format(self.url_xnfd_detail, xnfd_id)
-        response = requests.get("{0}".format(xnfd_url),
-                                headers=self.headers,
-                                verify=False)
-        xnfd = response.json()
-        try:
-            xnfd_actions = xnfd.get("df")[0]\
-                .get("lcm-operations-configuration")\
-                .get("operate-vnf-op-config").get("day1-2")[0]\
-                .get("config-primitive")
-        except Exception:
-            pass
-        return xnfd_actions
 
     # Called externally
     @check_authorization
@@ -406,8 +436,18 @@ class OSM():
             raise osm_exception.OSMPackageError(
                     {"error": "Internal server error",
                      "status": http_code})
+
+        pkg_id = output.get("id")
+        if self.events_active:
+            # Send notification to Portal
+            self.notify_message_broker_portal(
+                    "onboarding",
+                    "SC package with id={0} has been onboarded".
+                    format(pkg_id),
+                    [])
+
         return {
-            "id": output.get("id"),
+            "id": pkg_id,
             "status": HttpCode.ACCEPTED}
 
     def upload_xnfd_package(self, bin_file):
@@ -575,6 +615,7 @@ class OSM():
             raise osm_exception.OSMResourceNotFound(
                 {"error": "NS with id={} does not exist"
                   .format(nsi_id)})
+        trigger_modes = ["action"]
         # If the NS instance exists, trigger the action
         target_status = None
         output = {
@@ -590,23 +631,22 @@ class OSM():
                              args=(nsi_id,
                                    inst_md.get("ns-action-name"),
                                    inst_md.get("ns-action-params"),
+                                   trigger_modes,
                                    current_app._get_current_object(),
                                    target_status))
         t.start()
         return output
 
     def monitor_ns_deployment(self, nsi_id, action_name, action_params,
-                              app, target_status=None):
+                              trigger_modes, app, target_status=None):
         output = {"status": HttpCode.ACCEPTED}
         timeout = self.timing_to_inst
+        ns_deployed = False
         action_submitted = False
-        # A name for the action must be provided at least
-        if action_name is None:
-            return action_submitted
-        while not action_submitted:
+        nss = {}
+        while not ns_deployed:
             sleep(self.timing_interval)
             timeout = timeout-self.timing_interval
-            # print("Checking {0} {1} {2}".format(nsi_id, action, params))
             try:
                 nss = self.get_ns_instances(nsi_id)
             except osm_exception.OSMException:
@@ -632,42 +672,45 @@ class OSM():
                 break
             # When target is met and NS instance is running...
             if operational_status == self.deployment_expected_status:
+                ns_deployed = True
+
+                # Retrieve details on NS and xNF
+                nsi_details = self.get_ns_instance_details(nsi_id)
+                xni_ip = nsi_details.get("ip-infra")
+                # xni_id = nss.get("ns")[0].get("xnf").get("id")
+                # if isinstance(xni_id, list):
+                #     xni_id = xni_id[0]
+                # xni_data = self.get_xnf_instances(xni_id)
+                # xni_ip = xni_data.get("xnf")[0].get("ip")
+                if self.events_active:
+                    if "deployment" in trigger_modes:
+                        # Send notification to Portal
+                        self.notify_message_broker_portal(
+                                "deployment",
+                                "SC with id={} has been deployed".
+                                format(nsi_id),
+                                xni_ip)
+                    # Send notification to TAR/AE
+                    if "deployment" in trigger_modes \
+                            and "action" not in trigger_modes:
+                        self.notify_message_broker_ae(nsi_id)
+
+                # Execute action only if any provided
+                if action_name is None:
+                    return action_submitted
                 payload = {"action": action_name,
                            "params": action_params}
                 # Execute the specific action at the NS instance
                 output = self.exec_action_on_ns(nsi_id, payload)
-                # Send notification to TAR/AE - if set to active
-                if self.events_active:
-                    infra_url = "http://{}:{}/mon/infra/service?id={}".format(
-                                "so-mon",
-                                self.api_cat_section.get("mon").get("port"),
-                                nsi_id)
-                    response = requests.get(infra_url,
-                                            verify=False)
-                    infra_data = response.json()
-                    # Filter infrastructure with non-existing servicesi
-                    infra_data = list(filter(
-                        lambda x: len(x.get("ns")) > 0,
-                        infra_data.get("infrastructures")))
-                    infra_data = list(filter(
-                        lambda x: nsi_id in
-                        [x_.get("ns-id") for x_ in x.get("ns")],
-                        infra_data))
-                    if len(infra_data) > 0:
-                        infra_data = infra_data[0]
-                    if infra_data is not None:
-                        self.notify_message_broker(self.events_topics_inst_ae,
-                                                   infra_data)
 
-#                if action is not None:
+#                if action_name is not None:
 #                    app.mongo.store_xnf_action(xnf_instance,
-#                                               action,
-#                                               params,
+#                                               action_name,
+#                                               action_params,
 #                                               json.loads(output))
                 LOGGER.info(
                     "Action performed and stored, exiting thread")
                 LOGGER.info(output)
-                action_submitted = True
         return output
 
     @check_authorization
@@ -694,6 +737,11 @@ class OSM():
         ns_sshkeys = inst_md.get("ssh-keys")
         ns_action_name = inst_md.get("ns-action-name")
         ns_action_params = inst_md.get("ns-action-params")
+
+        trigger_modes = ["deployment"]
+        if ns_action_name is not None:
+            trigger_modes.append("action")
+
         nsi_data = {}
         if ns_pkg_id is not None:
             nsi_data.update({"nsdId": ns_pkg_id})
@@ -742,16 +790,10 @@ class OSM():
         # Asynchronous behaviour
         t = threading.Thread(target=self.monitor_ns_deployment,
                              args=(nsr_id, ns_action_name, ns_action_params,
+                                   trigger_modes,
                                    current_app._get_current_object(),
                                    self.deployment_expected_status))
         t.start()
-        # Synchronous behaviour
-        # self.monitor_ns_deployment(nsr_id,
-        #                            ns_action_name,
-        #                            ns_action_params,
-        #                            current_app._get_current_object(),
-        #                            self.deployment_expected_status)
-
         if status_code >= 200 and status_code < 400:
             success_msg = {"name": ns_name,
                            "id": response_data.get("id"),
@@ -780,8 +822,6 @@ class OSM():
         t = threading.Thread(target=self.monitor_ns_deletion,
                              args=(nsr_id, force))
         t.start()
-        # Synchronous behaviour
-        # self.monitor_ns_deletion(nsr_id, current_app._get_current_object())
         return {"id": nsr_id, "status": HttpCode.ACCEPTED}
 
     @check_authorization
@@ -789,6 +829,11 @@ class OSM():
         timeout = self.timing_to_del
         inst_url = "{0}/{1}".format(self.url_nsi_list,
                                     nsi_id)
+
+        # Retrieve details on NS and xNF
+        nsi_details = self.get_ns_instance_details(nsi_id)
+        xni_ip = nsi_details.get("ip-infra")
+
         while timeout > 0:
             try:
                 ns_status = self.get_ns_instances(nsi_id)
@@ -800,6 +845,13 @@ class OSM():
                               self.force_deletion_expected_status]:
                     LOGGER.info("NS with id={0} already in state={1}".format(
                         nsi_id, status))
+                    if self.events_active:
+                        # Send notification to Portal
+                        self.notify_message_broker_portal(
+                                "deletion",
+                                "SC with id={} has been deleted"
+                                .format(nsi_id),
+                                xni_ip)
                     break
             except Exception as e:
                 LOGGER.error("Cannot retrieve status for ns={0}. Details={1}".
@@ -815,6 +867,35 @@ class OSM():
         LOGGER.info("Terminating {0}".format(delete.text))
 
     @check_authorization
+    def get_ns_instance_details(self, nsi_id):
+        # First, enforce the NS instance exists
+        url_nsi_details = "{}?id={}".format(self.url_nsi_detail, nsi_id)
+        response = requests.get(url_nsi_details,
+                                headers=self.headers,
+                                verify=False)
+        nsi_det = response._content
+        if nsi_det is None:
+            raise osm_exception.OSMResourceNotFound(
+                {"error": "Cannot retrieve details for NS with " +
+                          "ID={}".format(nsi_id)})
+        # Otherwise, obtain the NS descriptor for the xNF package name,
+        # then inspect its KDUs
+        nsi_det = response.json()
+        xni_ip = "N/A"
+        try:
+            vca_status = list(nsi_det[0].get("vcaStatus").values())[0]
+            vca_apps = list(vca_status.get("applications").values())[0]
+            vca_units = list(vca_apps.get("units").values())[0]
+            xni_ip = vca_units.get("address")
+        except Exception:
+            pass
+        nsi_ret = {
+            "nsi": nsi_det,
+            "ip-infra": xni_ip,
+        }
+        return nsi_ret
+
+    @check_authorization
     def get_ns_instance_name(self, nsr_id):
         inst_url = "{0}/{1}".format(self.url_nsi_list,
                                     nsr_id)
@@ -827,24 +908,6 @@ class OSM():
             return iparams.get("nsName", None)
         else:
             return None
-
-#    # Called externally
-#    @check_authorization
-#    def get_ns_instances(self, nsr_id=None):
-#        if nsr_id is not None:
-#            inst_url = "{0}/{1}".format(self.url_nsi_list,
-#                                        nsr_id)
-#        else:
-#            inst_url = "{0}".format(self.url_nsi_list)
-#        response = requests.get(inst_url,
-#                                headers=self.headers,
-#                                verify=False)
-#        ns_instances = json.loads(response.text)
-#        if nsr_id is not None:
-#            return {"ns": [self.filter_output_nsi(ns_instances)]}
-#        ns_data = {"ns":
-#                   [self.filter_output_nsi(x) for x in ns_instances]}
-#        return ns_data
 
     # Called externally
     @check_authorization
@@ -889,7 +952,6 @@ class OSM():
             vim_name = vim_detail.get("name")
         creation_time = TimeHandling.ms_to_rfc3339(nsi.get("create-time"))
         nsi_id = nsi.get("id")
-        xnfd_id = nsi.get("vnfd-id")
         out_nsi.update({
             "creation-time": creation_time,
             "id": nsi_id,
@@ -900,25 +962,20 @@ class OSM():
             },
             "xnf": {
                 "id": nsi.get("constituent-vnfr-ref"),
+                # "xnfd-id": nsi.get("vnfd-id"),
             },
             "status": {
                 "config": nsi.get("config-status"),
                 "operational": nsi.get("operational-status")
             }
         })
-        # Get actions
-        # actions = {}
-        actions = []
-#        try:
-#            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
-#            for vca_app_name, vca_app_cfg in vca_apps.items():
-#                actions.update(vca_app_cfg.get("actions"))
-#        except Exception:
-#            pass
-        # Hack
-        if isinstance(xnfd_id, list) and len(xnfd_id) > 0:
-            xnfd_id = xnfd_id[0]
-        actions = self.get_xnf_descriptor_actions(xnfd_id)
+        actions = {}
+        try:
+            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
+            for vca_app_name, vca_app_cfg in vca_apps.items():
+                actions.update(vca_app_cfg.get("actions"))
+        except Exception:
+            pass
         if len(actions) > 0:
             out_nsi.update({"actions": actions})
         vim_dict = {}
@@ -975,12 +1032,11 @@ class OSM():
         ns_id = xnfi.get("nsr-id-ref")
         ns_name = self.get_ns_instance_name(ns_id)
         creation_time = TimeHandling.ms_to_rfc3339(xnfi.get("created-time"))
-        xnfd_id = xnfi.get("vnfd-id")
         out_xnfi.update({
             "creation-time": creation_time,
             "id": xnfi.get("id"),
             "package": {
-                "id": xnfd_id,
+                "id": xnfi.get("vnfd-id"),
                 "name": xnfi.get("vnfd-ref"),
             },
             "ns": {
@@ -997,21 +1053,6 @@ class OSM():
                 "name": vim.get("name"),
             }
         })
-        # Get actions
-        # actions = {}
-        actions = []
-#        try:
-#            vca_apps = nsi.get("vcaStatus").get(nsi_id).get("applications")
-#            for vca_app_name, vca_app_cfg in vca_apps.items():
-#                actions.update(vca_app_cfg.get("actions"))
-#        except Exception:
-#            pass
-        # Hack
-        if isinstance(xnfd_id, list) and len(xnfd_id) > 0:
-            xnfd_id = xnfd_id[0]
-        actions = self.get_xnf_descriptor_actions(xnfd_id)
-        if len(actions) > 0:
-            out_xnfi.update({"actions": actions})
         try:
             out_xnfi.update({
                 "k8scluster": {
@@ -1112,25 +1153,16 @@ class OSM():
         primitive_name = payload.get("action")
         primitive_params = payload.get("params")
 
-        # First, enforce the NS instance exists
-        url_nsi_details = "{}?id={}".format(self.url_nsi_detail, nsi_id)
-        response = requests.get(url_nsi_details,
-                                headers=self.headers,
-                                verify=False)
-        nsd = response._content
-        if nsd is None:
-            raise osm_exception.OSMResourceNotFound(
-                {"error": "Cannot retrieve details for NS with " +
-                          "ID={}".format(nsi_id)})
+        # Retrieve details on NS and xNF
+        nsi_details = self.get_ns_instance_details(nsi_id)
+        nsd = nsi_details.get("nsi")
+        xni_ip = nsi_details.get("ip-infra")
 
         # If action is one of the predetermined actions, call the specific
         # endpoint (no params required) and finish
         if primitive_name in self.osm_builtin_actions:
             return self.exec_builtin_action_on_ns(nsi_id, primitive_name)
 
-        # Otherwise, obtain the NS descriptor for the xNF package name,
-        # then inspect its KDUs
-        nsd = response.json()
         instance_url = self.url_nsd_action.format(nsi_id)
         xnfd_name = nsd[0].get("nsd").get("vnfd-id")
         if isinstance(xnfd_name, list):
@@ -1168,22 +1200,20 @@ class OSM():
                 headers=self.headers,
                 data=yaml_dump(osm_payload),
                 verify=False)
-            LOGGER.info("POST TO URL: ==================·····")
-            LOGGER.info(instance_url)
-            LOGGER.info("HEADERS: ======================·····")
-            LOGGER.info(self.headers)
-            LOGGER.info("WITH PAYLOAD: =================·····")
-            LOGGER.info(osm_payload)
-            LOGGER.info("RESPONSE TEXT: ================·····")
-            LOGGER.info(resp.text)
-            LOGGER.info("RESPONSE STATUS CODE: =========·····")
-            LOGGER.info(resp.status_code)
-            LOGGER.info("===============================·····")
             output = resp.json()
             status_code = output.get("status")
             if status_code is None:
                 status_code = HttpCode.ACCEPTED
             if status_code >= 200 and status_code < 400:
+                LOGGER.info("NS with id={0} triggered action={1}".format(
+                            nsi_id, primitive_name))
+                if self.events_active:
+                    # Send notification to Portal
+                    self.notify_message_broker_portal(
+                            "action",
+                            "SC with id={0} triggered action={1}".
+                            format(nsi_id, primitive_name),
+                            xni_ip)
                 success_msg = {"ns-id": nsi_id,
                                "action-name": primitive_name,
                                "action-params": primitive_params,
