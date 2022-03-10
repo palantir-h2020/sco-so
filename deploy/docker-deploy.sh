@@ -59,6 +59,51 @@ function docker_install() {
     fi
 }
 
+function docker_setup_iproute_cmd() {
+    docker_net="${1}"
+    docker_br_so_net_id=$(docker network inspect -f '{{.Id}}' ${docker_net} | cut -c1-12)
+    docker_br_so_net_gw=$(docker network inspect -f '{{range.IPAM.Config}}{{.Gateway}}{{end}}' ${docker_net})
+    docker_br_so_net_sub=$(docker network inspect -f '{{range.IPAM.Config}}{{.Subnet}}{{end}}' ${docker_net})
+    docker_br_so_net_sub_mask=${docker_br_so_net_sub%:*}
+    docker_br_so_net_sub_mask=${docker_br_so_net_sub_mask##*/}
+    docker_br_so_net_cidr="${docker_br_so_net_gw}/${docker_br_so_net_sub_mask}"
+    docker_if_docker0_ip_route=$(ip route show ${docker_br_so_net_cidr} | wc -l)
+    if [[ ${docker_if_docker0_ip_route} -eq 0 ]]; then
+        echo "sudo ip addr add dev br-${docker_br_so_net_id} ${docker_br_so_net_cidr}"
+    fi
+}
+
+function docker_config_networks() {
+    # Check for Docker bridges, in case of misconfiguration
+    docker_if_docker0_config="172.17.0.0/16"
+
+    ## Example
+    # sudo ip addr add dev docker0 172.17.0.1/16
+    # sudo ip addr add dev br-829ce0f80e44 172.28.0.1/16
+    # sudo ip addr add dev br-b49b248f967b 172.29.0.1/16
+
+    ## Check 1st routing rule
+    docker_if_docker0_ip_route=$(ip route show ${docker_if_docker0_config} | wc -l)
+    if [[ ${docker_if_docker0_ip_route} -eq 0 ]]; then
+	echo "Creating Docker interfaces: docker0"
+        sudo ip addr add dev docker0 ${docker_if_docker0_config}
+    fi
+
+    ## Check 2nd routing rule
+    docker_br_so_net_cidr=$(docker_setup_iproute_cmd "so-core")
+    if [[ ! -z ${docker_br_so_net_cidr} ]]; then
+	echo "Creating Docker bridges: so-core"
+        $(eval ${docker_br_so_net_cidr})
+    fi
+
+    ## Check 3rd routing rule
+    docker_br_db_net_cidr=$(docker_setup_iproute_cmd "so-db")
+    if [[ ! -z ${docker_br_db_net_cidr} ]]; then
+	echo "Creating Docker bridges: so-db"
+        $(eval ${docker_br_db_net_cidr})
+    fi
+}
+
 function docker_create_networks() {
     declare -a docker_preexisting_networks=("so-core" "so-db")
     for docker_network in "${docker_preexisting_networks[@]}"; do
@@ -165,3 +210,5 @@ function deploy_modules() {
 docker_install
 docker_create_networks
 deploy_modules
+# Needed in case Docker networking failed in the environment
+docker_config_networks
