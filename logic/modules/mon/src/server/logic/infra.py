@@ -100,7 +100,8 @@ class Infra(object):
             if infra_res is not None and len(infra_res) > 0:
                 infra_res.update(
                     {k: infra.get(k) for k in
-                        ["deployments", "id", "name", "tenant", "type"]
+                        ["deployments", "id", "name", "tenant", "type",
+                            "osm-vim-id"]
                      })
                 result.get("infrastructures").append(infra_res)
             infra_res = {}
