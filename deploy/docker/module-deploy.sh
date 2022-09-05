@@ -90,11 +90,29 @@ if [[ -d ${common_keys_path} ]]; then
 fi
 
 # Copy deployment local-related files (such as common scripts
-# or cfg files) in order to be used
+# or cfg files) in order to be used; then validate their existence
 modl_loc_path="${PWD}/../local"
 mkdir -p ${modl_loc_path}
 if [[ -d ${modl_loc_path} ]]; then
     cp -Rp ${modl_loc_path} .
+fi
+# MON-specific
+echo "MODULE: ${SO_MODL_NAME}"
+echo $PWD
+if [[ ${SO_MODL_NAME} -eq "mon" ]]; then
+  gen_cfg_infra_file="${gen_cfg_path}/infra.yaml"
+  echo "gen_cfg_infra_file: ${gen_cfg_infra_file}"
+  mon_infra_files=$(cat ${gen_cfg_infra_file} | grep file | grep yaml | cut -d ":" -f2 | tr -d " " | tr -d "\"")
+  for infra_file in ${mon_infra_files[$@]}; do
+    echo ${infra_file}
+    infra_file_name=$(basename "${infra_file}")
+    echo ${infra_file_name}
+    infra_cfg_file="${modl_loc_path}/${infra_file_name}"
+    echo ${infra_cfg_file}
+    if [[ ! -f ${infra_cfg_file} ]]; then
+      error_exit "Configuration file \"$(realpath ${infra_cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${modl_loc_path})\" and adjust the values"
+    fi
+  done
 fi
 
 # Deployment upon generation/build of images
