@@ -20,16 +20,17 @@ import ssl
 
 logger = log.getLogger("httpserver")
 
+logger.info("server.py, antes de la class Server")
 
 class Server(object):
     """
     Encapsulates a Flask server instance to expose a REST API.
     """
-
     def __init__(self):
         """
         Constructor for the server wrapper.
         """
+        logger.info("server.py, class Server, init")
         cfg = ServerConfig()
         self.__dict__.update(cfg.__dict__)
         self.__load__blueprint_modules()
@@ -39,6 +40,7 @@ class Server(object):
         # blueprints_path = os.path.normpath(os.path.join(
         #             os.path.dirname(__file__), "blueprints"))
         # Load from relative path (in same folder as main.py - entry point)
+        logger.info("server.py, class Server, load blueprint")
         blueprints_path = os.path.normpath(os.path.join(".", "blueprints"))
         blueprint_elems = []
         if os.path.isdir(blueprints_path):
@@ -57,6 +59,7 @@ class Server(object):
         Returns the flask instance (not part of the service interface,
         since it is specific to flask).
         """
+        logger.info("server.py, class Server, app")
         return self._app
 
     def add_routes(self):
@@ -64,6 +67,7 @@ class Server(object):
         New method. Allows registering URLs from the blueprint files defined
         under the "blueprints" folder, in the same directory as this file.
         """
+        logger.info("server.py, class Server, add_routes")
         for mod_name in self.blueprints.keys():
             if mod_name not in sys.modules:
                 loaded_mod = __import__("blueprints" + "." + mod_name,
@@ -77,8 +81,9 @@ class Server(object):
         Starts up the server. It (will) support different config options
         via the config plugin.
         """
+        print("server.py, class Server, run")
         self.add_routes()
-        logger.info("Registering app server at %s:%i", self.host, self.port)
+        logger.info("Registering app server at %s:%i" % (self.host, self.port))
         try:
             context = None
             if self.https_enabled:

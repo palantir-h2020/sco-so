@@ -7,11 +7,12 @@
 import sys
 
 from common.server.http.server import Server
-
+print ("main.py, import")
 
 def main():
     try:
         Server().run()
+        print ("main.py, main")
     except KeyboardInterrupt:
         return True
     except Exception as e:

@@ -155,8 +155,17 @@ function copy_replace_files() {
         cp -Rp ${PWD}/docker/* ${modl_deploy_path}
         # Copy deployment variables
         cp -Rp ${PWD}/deploy-vars.sh ${modl_deploy_path}
+	# 2022/07/22: NEW
         # Copy Dockerfile template in each own's deploy/docker folder (if module does not have one already)
-        if [ -f ${modl_deploy_path}/${docker_file} ]; then
+        if [ ! -f ${modl_deploy_path}/${docker_file} ]; then
+            # Replace env vars as needed
+            cp -Rp ${PWD}/docker/${docker_file}.tpl ${modl_deploy_path}/
+            echo "Replacing env vars in template: ${modl_deploy_path}/${docker_file}.tpl ..."
+            replace_vars "${modl_deploy_path}/${docker_file}.tpl"
+	fi
+	# 2022/07/22: NOTE THIS IS THE ORIGINAL CODE
+        # Copy Dockerfile template in each own's deploy/docker folder (if module does not have one already)
+        if [ ! -f ${modl_deploy_path}/${docker_file} ]; then
             error_msg="No Dockerfile found for module: \"${modl_base}\"\n"
             error_msg+="Missing file: $(realpath ${modl_deploy_path}/${docker_file})"
             error_exit "${error_msg}"
@@ -166,10 +175,11 @@ function copy_replace_files() {
             error_msg+="Missing file: $(realpath ${modl_deploy_path}/${docker_compose})"
             error_exit "${error_msg}"
         fi
-        # Replace env vars as needed
-        cp -Rp ${PWD}/docker/${docker_file}.tpl ${modl_deploy_path}/
-        echo "Replacing env vars in template: ${modl_deploy_path}/${docker_file}.tpl ..."
-        replace_vars "${modl_deploy_path}/${docker_file}.tpl"
+#	# 2022/07/22: COMMENTED
+#        # Replace env vars as needed
+#        cp -Rp ${PWD}/docker/${docker_file}.tpl ${modl_deploy_path}/
+#        echo "Replacing env vars in template: ${modl_deploy_path}/${docker_file}.tpl ..."
+#        replace_vars "${modl_deploy_path}/${docker_file}.tpl"
     fi
 }
 
@@ -188,6 +198,7 @@ function setup_modl_deploy_folder() {
 function deploy_modules() {
     # $MODULE: module name passed by parameter
     # $module: module name iterated from all modules
+    MODULE_FOUND=0
     for module in ${PWD}/../logic/modules/*; do
         modl_base=$(basename $module)
 	modl_cont="so-${modl_base}"
@@ -201,9 +212,13 @@ function deploy_modules() {
                 fi
                 # Reset the flag that indicates a module should be skipped
 		MODULE_SKIP=0
-	    fi
+                MODULE_FOUND=1
+            fi
         fi
     done
+    if ([ ! -z $MODULE ] && [ ${MODULE_FOUND} -eq 0 ]); then
+        text_warning "Module: ${MODULE} does not exist"
+    fi
 }
 
 
