@@ -1,0 +1,6 @@
+general:
+  debug: "True"
+
+alerts:
+  monitoring:
+    scrape_interval: 5 #sec

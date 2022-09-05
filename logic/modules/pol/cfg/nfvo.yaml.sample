@@ -1,0 +1,17 @@
+general:
+  host: 0.0.0.0
+  port: 8008
+
+osm:
+  nbi:
+    protocol: https
+    host: 127.0.0.1
+    port: 9999
+    username: admin
+    password: admin
+  package:
+    host: 127.0.0.1
+    port: 9090
+  ro:
+    host: 127.0.0.1
+    port: 9999
