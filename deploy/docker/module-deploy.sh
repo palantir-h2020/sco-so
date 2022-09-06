@@ -97,14 +97,14 @@ if [[ -d ${modl_loc_path} ]]; then
     cp -Rp ${modl_loc_path} .
 fi
 # MON-specific
-if [[ ${SO_MODL_NAME} -eq "mon" ]]; then
+if [[ ${SO_MODL_NAME} == "mon" ]]; then
   gen_cfg_infra_file="${gen_cfg_path}/infra.yaml"
   mon_infra_files=$(cat ${gen_cfg_infra_file} | grep file | grep yaml | cut -d ":" -f2 | tr -d " " | tr -d "\"")
   for infra_file in ${mon_infra_files[$@]}; do
     infra_file_name=$(basename "${infra_file}")
     infra_cfg_file="${modl_loc_path}/${infra_file_name}"
     if [[ ! -f ${infra_cfg_file} ]]; then
-      error_exit "Configuration file \"$(realpath ${infra_cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${modl_loc_path})\" and adjust the values"
+      error_exit "Configuration file \"$(realpath ${infra_cfg_file})\" (requested by configuration file \"$(realpath ${gen_cfg_infra_file})\") is not personalised. To do so, copy the file into \"$(realpath ${modl_loc_path})\" and adjust the values"
     fi
   done
 fi
