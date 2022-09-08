@@ -8,12 +8,15 @@ from common.db.models.prometheus_targets import PrometheusTargets
 from common.db.models.prometheus_targets_operation import\
     PrometheusTargetsOperation
 from common.server.http.http_code import HttpCode
+from handlers.node_exporter_setup import NodeExporterSetup
 from datetime import datetime
 
 import copy
 import json
 import shutil
 
+
+node_exporter_setup = NodeExporterSetup()
 
 class PrometheusTargetsHandler(object):
 
@@ -130,9 +133,11 @@ class PrometheusTargetsHandler(object):
         targets_list = self._get_targets_from_file()
         targets_list.append(url)
         self._update_contents(targets_list)
+       
         # TODO: introduce means to verify the content is properly
         # updated w.r.t. to the request
         if url in targets_list:
+            node_exporter_setup.install_node_exporter(url)
             return HttpCode.OK
         else:
             return HttpCode.INTERNAL_ERROR
@@ -151,12 +156,14 @@ class PrometheusTargetsHandler(object):
         index_target = targets_list.index(old_url)
         targets_list[index_target] = new_url
         self._update_contents(targets_list)
+       
         # TODO: introduce means to verify the content is properly
         # updated w.r.t. to the request
         if old_url in targets_list:
             return HttpCode.INTERNAL_ERROR
         else:
             if new_url in targets_list:
+                node_exporter_setup.install_node_exporter(new_url)
                 return HttpCode.OK
 
     def delete_target(self, url: str) -> HttpCode:
@@ -178,4 +185,5 @@ class PrometheusTargetsHandler(object):
         if url in targets_list:
             return HttpCode.INTERNAL_ERROR
         else:
+            node_exporter_setup.uninstall_node_exporter(url)
             return HttpCode.OK

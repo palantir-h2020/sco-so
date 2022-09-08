@@ -17,14 +17,11 @@ myclient = pymongo.MongoClient(
     "mongodb://{}:{}".format(db_manager.host, db_manager.port)
 )
 db = myclient[db_manager.db_name]
-remote_command = db["remote_command"]
-pushgateway_response = db["pushgateway_response"]
-
+custom_metrics = db["custom_metrics"]
 
 class Metrics:
     """
-    Base class to retrieve all metrics from the Prometheus
-    node exporter and DB.
+    Base class to retrieve all metrics from the Prometheus node exporter and DB.
     """
 
     def parser_config(self):
@@ -83,7 +80,7 @@ class Metrics:
             try:
                 mongo_list = []
                 for target in self.targets_list:
-                    for i in remote_command.find({"xnf_id": target}):
+                    for i in custom_metrics.find({"xnf_id": target}):
                         mongo_dict = {
                             "xnf-id": "",
                             "metric-name": "",
@@ -104,7 +101,7 @@ class Metrics:
             if metric_name is None:
                 if xnf_id in self.targets_list:
                     mongo_list = []
-                    for i in remote_command.find({"xnf_id": xnf_id}):
+                    for i in custom_metrics.find({"xnf_id": xnf_id}):
                         mongo_dict = {
                             "xnf-id": "",
                             "metric-name": "",
@@ -122,7 +119,7 @@ class Metrics:
             else:
                 if xnf_id is None:
                     mongo_list = []
-                    for i in remote_command.find({"metric_name": metric_name}):
+                    for i in custom_metrics.find({"metric_name": metric_name}):
                         mongo_dict = {
                             "xnf-id": "",
                             "metric-name": "",
@@ -138,7 +135,7 @@ class Metrics:
                 else:
                     if xnf_id in self.targets_list:
                         mongo_list = []
-                        for i in remote_command.find({
+                        for i in custom_metrics.find({
                                 "xnf_id": xnf_id,
                                 "metric_name": metric_name}):
                             mongo_dict = {
@@ -153,93 +150,5 @@ class Metrics:
                             mongo_dict["data"] = i["data"]
                             mongo_list.append(mongo_dict)
                         return mongo_list
-                    else:
-                        return "{} Target is not registered".format(xnf_id)
-
-    def mongodb_pushgateway_metrics(self, xnf_id, metric_name):
-        if (xnf_id is None) and (metric_name is None):
-            try:
-                mongo_list_pushgateway = []
-                for target in self.targets_list:
-                    for i in pushgateway_response.find({"xnf_id": target}):
-                        mongo_dict_pushgateway = {
-                            "xnf-id": "",
-                            "metric-name": "",
-                            "metric-command": "",
-                            "data": "",
-                        }
-                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
-                        mongo_dict_pushgateway["metric-name"] = \
-                            i["metric_name"]
-                        mongo_dict_pushgateway["metric-command"] = \
-                            i["metric_command"]
-                        mongo_dict_pushgateway["data"] = i["data"]
-                        mongo_list_pushgateway.append(mongo_dict_pushgateway)
-                return mongo_list_pushgateway
-            except Exception:
-                return "{} {}".format(
-                        "An error ocurred with your request.",
-                        "Check your MongoDB connection")
-        else:
-            if metric_name is None:
-                if xnf_id in self.targets_list:
-                    mongo_list_pushgateway = []
-                    for i in pushgateway_response.find({"xnf_id": xnf_id}):
-                        mongo_dict_pushgateway = {
-                            "xnf-id": "",
-                            "metric-name": "",
-                            "metric-command": "",
-                            "data": "",
-                        }
-                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
-                        mongo_dict_pushgateway["metric-name"] = \
-                            i["metric_name"]
-                        mongo_dict_pushgateway["metric-command"] = \
-                            i["metric_command"]
-                        mongo_dict_pushgateway["data"] = i["data"]
-                        mongo_list_pushgateway.append(mongo_dict_pushgateway)
-                    return mongo_list_pushgateway
-                else:
-                    return "{} Target is not registered".format(xnf_id)
-            else:
-                if xnf_id is None:
-                    mongo_list_pushgateway = []
-                    for i in pushgateway_response.find({
-                            "metric_name": metric_name}):
-                        mongo_dict_pushgateway = {
-                            "xnf-id": "",
-                            "metric-name": "",
-                            "metric-command": "",
-                            "data": "",
-                        }
-                        mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
-                        mongo_dict_pushgateway["metric-name"] = \
-                            i["metric_name"]
-                        mongo_dict_pushgateway["metric-command"] = \
-                            i["metric_command"]
-                        mongo_dict_pushgateway["data"] = i["data"]
-                        mongo_list_pushgateway.append(mongo_dict_pushgateway)
-                    return mongo_list_pushgateway
-                else:
-                    if xnf_id in self.targets_list:
-                        mongo_list_pushgateway = []
-                        for i in pushgateway_response.find({
-                                "xnf_id": xnf_id,
-                                "metric_name": metric_name}):
-                            mongo_dict_pushgateway = {
-                                "xnf-id": "",
-                                "metric-name": "",
-                                "metric-command": "",
-                                "data": "",
-                            }
-                            mongo_dict_pushgateway["xnf-id"] = i["xnf_id"]
-                            mongo_dict_pushgateway["metric-name"] = \
-                                i["metric_name"]
-                            mongo_dict_pushgateway["metric-command"] = \
-                                i["metric_command"]
-                            mongo_dict_pushgateway["data"] = i["data"]
-                            mongo_list_pushgateway.append(
-                                mongo_dict_pushgateway)
-                        return mongo_list_pushgateway
                     else:
                         return "{} Target is not registered".format(xnf_id)

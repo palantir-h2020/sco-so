@@ -4,11 +4,11 @@
 # Copyright 2021-present i2CAT
 # All rights reserved
 
+from datetime import datetime
+from common.db.models.alerts.alerts_metrics import AlertsMetrics
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
-from common.db.models.pushgateway_req import PushgatewayRequest
-from common.db.models.pushgateway_res import PushgatewayResponse
-from datetime import datetime
+from common.db.models.metrics.custom_metrics import CustomMetrics
 from .execute_command import ExecuteCommand
 from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
 
@@ -33,24 +33,23 @@ class Pushgateway():
             pushgateway_conf.get("port"),
         )
 
-    def persist_requests_mongodb(self):
-        pushgateway_request_model = PushgatewayRequest()
-        pushgateway_request_model.xnf_id = self.xnf_id
-        pushgateway_request_model.xnf_ip = self.xnf_ip
-        pushgateway_request_model.metric_name = self.metric_name
-        pushgateway_request_model.metric_command = self.metric_command
-        pushgateway_request_model.date = datetime.now()
-        pushgateway_request_model.save()
-
     def persist_response_mongodb(self):
-        pushgateway_response_model = PushgatewayResponse()
-        pushgateway_response_model.xnf_id = self.xnf_id
-        pushgateway_response_model.xnf_ip = self.xnf_ip
+        pushgateway_response_model = CustomMetrics()
+        pushgateway_response_model.xnf_id = self.nf_id
         pushgateway_response_model.metric_name = self.metric_name
         pushgateway_response_model.metric_command = self.metric_command
         pushgateway_response_model.data = self.data
         pushgateway_response_model.date = datetime.now()
         pushgateway_response_model.save()
+
+    def mongodb_alerts_metrics(self):
+        alerts_metrics = AlertsMetrics()
+        alerts_metrics.vnf_id = self.vnf_id
+        alerts_metrics.metric_name = self.metric_name
+        alerts_metrics.metric_command = self.metric_command
+        alerts_metrics.data = self.data
+        alerts_metrics.date = datetime.now()
+        alerts_metrics.save()
 
     def persist_metric_prometheus_pushgateway(self, request):
 
@@ -63,7 +62,6 @@ class Pushgateway():
         targets_list = PrometheusTargets.objects.order_by("-id")\
             .first().targets
         if self.xnf_id in targets_list:
-            self.persist_requests_mongodb()
             self.parser()
 
             parsed_metric_command = self.metric_command.split(";")
@@ -80,8 +78,11 @@ class Pushgateway():
                     "metric-command": parsed_metric_command1[0],
                     "data": self.data,
                 }
-
-                self.persist_response_mongodb()
+                so_pol = "__so_pol__"
+                if so_pol in self.metric_name:
+                    self.mongodb_alerts_metrics()
+                else:
+                    self.persist_response_mongodb()
 
                 registry = CollectorRegistry()
                 g = Gauge(self.metric_name, self.metric_name,

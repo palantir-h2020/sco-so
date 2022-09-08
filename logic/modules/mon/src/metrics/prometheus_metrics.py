@@ -35,11 +35,11 @@ class PrometheusMetrics():
         target_id = request_body.get("xnf-id")
         instance = request_body.get("xnf-ip")
         metric_name = request_body.get("metric-name")
-
+        
         targets_list = PrometheusTargets.objects.order_by("-id")\
             .first().targets
         if target_id in targets_list:
-            # Execute the request
+        # Execute the request
             self.client_query = "{}{}".format(
                 self.prometheus_query_endpoint, metric_name)
             try:

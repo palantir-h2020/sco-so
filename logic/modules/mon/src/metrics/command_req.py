@@ -5,9 +5,10 @@
 # All rights reserved
 
 
+from common.db.models.alerts.alerts_metrics import AlertsMetrics
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
-from common.db.models.remote_command import RemoteCommand
+from common.db.models.metrics.custom_metrics import CustomMetrics
 from datetime import datetime
 from .execute_command import ExecuteCommand
 
@@ -49,7 +50,11 @@ class CommandReq():
                     "metric-command": parsed_metric_command1[0],
                     "data": self.data,
                 }
-                self.persist_metric_remote_command()
+                so_pol = "__so_pol__"
+                if so_pol in self.metric_name:
+                    self.mongodb_alerts_metrics()
+                else:
+                    self.persist_metric_remote_command()
                 return self.result
             else:
                 self.result = {
@@ -63,10 +68,19 @@ class CommandReq():
             return "{} target is not registered".format(self.xnf_id)
 
     def persist_metric_remote_command(self):
-        remote_metric_model = RemoteCommand()
+        remote_metric_model = CustomMetrics()
         remote_metric_model.xnf_id = self.xnf_id
         remote_metric_model.metric_name = self.metric_name
         remote_metric_model.metric_command = self.metric_command
         remote_metric_model.data = self.data
         remote_metric_model.date = datetime.now()
         remote_metric_model.save()
+
+    def mongodb_alerts_metrics(self):
+        alerts_metrics = AlertsMetrics()
+        alerts_metrics.vnf_id = self.vnf_id
+        alerts_metrics.metric_name = self.metric_name
+        alerts_metrics.metric_command = self.metric_command
+        alerts_metrics.data = self.data
+        alerts_metrics.date = datetime.now()
+        alerts_metrics.save()
