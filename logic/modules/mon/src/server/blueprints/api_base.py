@@ -38,33 +38,33 @@ pushgateway = Pushgateway()
 @so_blueprints.route("/mon", methods=["GET"])
 def base() -> HttpResponse:
     data = {"name": "mon_api"}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/vim", methods=["GET"])
 def vim_list() -> HttpResponse:
     data = VIM.vim_list()
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/vnf", methods=["GET"])
 def vnf_list() -> HttpResponse:
     data = VNF.vnf_list()
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 
 
 @so_blueprints.route("/mon/targets", methods=["GET"])
 def targets_list() -> HttpResponse:
     data = {"targets": prometheus_targets_handler.targets_list()}
     data = {"results": data}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl http://127.0.0.1:50106/mon/targets
 
 
 @so_blueprints.route("/mon/targets", methods=["POST", "PUT", "DELETE"])
 def targets_handle() -> HttpResponse:
     return_code = prometheus_targets_handler.update_target(request)
-    return HttpResponse.formatted("OK", return_code)
+    return HttpResponse.infer("OK", return_code)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50106/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50106/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
@@ -79,13 +79,13 @@ def xnf_metrics() -> HttpResponse:
         metrics_.mongodb_metrics(xnf_id, metric_name)
     ]
     data = {"results": data}
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl http://127.0.0.1:50106/mon/targets/metrics 
 
 @so_blueprints.route("/mon/metrics", methods=["GET"])
 def xnf_metrics_handle() -> HttpResponse:
     data = prometheus_metrics.prometheus_metrics(request)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X GET http://127.0.0.1:50106/mon/metrics -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "node_disk_info"}'
 
 @so_blueprints.route("/mon/metrics/xnf", methods=["POST"])
@@ -95,7 +95,7 @@ def xnf_metrics_request() -> HttpResponse:
     except:
         data = command_request.metric_remote_command(request)
    
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/metrics/vnf -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "ls", "metric-command": "ls"}'
 
 
@@ -103,7 +103,7 @@ def xnf_metrics_request() -> HttpResponse:
 def xnf_metrics_node() -> HttpResponse:
     data = node.manual_install_uninstall_exporter(request)
     data = {"results": data}    
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/metrics/node -d '{"xnf-ip": ["172.28.2.146"]}'
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50106/mon/metrics/node -d '{"xnf-ip": ["172.28.2.146"]}'
 
@@ -113,11 +113,11 @@ def xnf_metrics_alerts() -> HttpResponse:
     xnf_id = request.args.get("xnf-id")
     metric_name = request.args.get("metric-name")
     data = alerts.retrieve_registered_alerts(xnf_id, metric_name)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl http://127.0.0.1:50106/mon/metrics/alerts
 
 @so_blueprints.route("/mon/metrics/background", methods=["POST"])
 def background() -> HttpResponse:
     data = background_mon.background_monitoring(request)
-    return HttpResponse.formatted(data, HttpCode.OK)
+    return HttpResponse.infer(data, HttpCode.OK)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/metrics/background -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "ls", "metric-command": "ls"}'
