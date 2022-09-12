@@ -1,6 +1,6 @@
 general:
   host: so-dbl
-  port: 27017
+  port: 50104
 
 db:
   user: so

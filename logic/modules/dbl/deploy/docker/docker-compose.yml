@@ -1,18 +1,21 @@
 version: "3.8"
 
 services:
-  so_db:
+  so_dbl:
     image: mongo
-    container_name: ${SO_MODL_NAME}
+    container_name: so-${SO_MODL_NAME}
     hostname: ${SO_MODL_NAME}
     restart: unless-stopped
-    #environment:
+    command: --port ${SO_MODL_API_PORT}
+    environment:
+      - SO_MODL_NAME
+      - SO_MODL_API_PORT
     #  - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
     #  - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     ports:
-      - "27017:50103"
+      - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
     healthcheck:
-      test: echo "db.runCommand('ping').ok" | mongo so-db:27017/test --quiet
+      test: echo "db.runCommand('ping').ok" | mongo so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/test --quiet
       interval: 10s
       timeout: 10s
       retries: 5
