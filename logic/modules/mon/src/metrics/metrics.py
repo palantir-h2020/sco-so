@@ -14,7 +14,7 @@ import requests
 
 db_manager = DBManager()
 myclient = pymongo.MongoClient(
-    "mongodb://{}:{}".format(db_manager.host, db_manager.port)
+    "mongodb://{}:{}@{}:{}".format(db_manager.user_id, db_manager.user_password, db_manager.host, db_manager.port)
 )
 db = myclient[db_manager.db_name]
 custom_metrics = db["custom_metrics"]

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -96,7 +96,7 @@ def xnf_metrics_request() -> HttpResponse:
         data = command_request.metric_remote_command(request)
    
     return HttpResponse.infer(data, HttpCode.OK)
-# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/metrics/vnf -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "ls", "metric-command": "ls"}'
+# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/metrics/xnf -d '{"xnf-id": "172.28.2.146:9100", "xnf-ip": "172.28.2.146", "metric-name": "ls", "metric-command": "ls"}'
 
 
 @so_blueprints.route("/mon/metrics/node", methods=["POST", "DELETE"])

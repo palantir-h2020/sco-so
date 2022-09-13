@@ -54,8 +54,7 @@ def xnf_metrics() -> HttpResponse:
     metric_name = request.args.get("metric-name")
     data = [
         metrics_.exporter_metrics(xnf_id, metric_name),
-        metrics_.mongodb_metrics(xnf_id, metric_name),
-        metrics_.mongodb_pushgateway_metrics(xnf_id, metric_name),
+        metrics_.mongodb_metrics(xnf_id, metric_name)
     ]
     data = {"results": data}
     return HttpResponse.infer(data, HttpCode.OK)
