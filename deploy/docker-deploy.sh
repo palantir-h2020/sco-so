@@ -29,6 +29,10 @@ ENV_VARS_NAMES=""
 DEPLOY_DIR=$(realpath $(dirname $0))
 MODULE_SKIP=0
 
+DOCKER_NETWORK_DB="so-db"
+DOCKER_NETWORK_CORE="so-core"
+DOCKER_VOLUME_DB="so-db"
+
 source deploy-vars.sh
 source deploy-opts.sh
 
@@ -85,32 +89,39 @@ function docker_config_networks() {
     ## Check 1st routing rule
     docker_if_docker0_ip_route=$(ip route show ${docker_if_docker0_config} | wc -l)
     if [[ ${docker_if_docker0_ip_route} -eq 0 ]]; then
-	echo "Creating Docker interfaces: docker0"
+        echo "Creating Docker interfaces: docker0"
         sudo ip addr add dev docker0 ${docker_if_docker0_config}
     fi
 
     ## Check 2nd routing rule
-    docker_br_so_net_cidr=$(docker_setup_iproute_cmd "so-core")
+    docker_br_so_net_cidr=$(docker_setup_iproute_cmd "${DOCKER_NETWORK_CORE}")
     if [[ ! -z ${docker_br_so_net_cidr} ]]; then
-	echo "Creating Docker bridges: so-core"
+        echo "Creating Docker bridges: ${DOCKER_NETWORK_CORE}"
         $(eval ${docker_br_so_net_cidr})
     fi
 
     ## Check 3rd routing rule
-    docker_br_db_net_cidr=$(docker_setup_iproute_cmd "so-db")
+    docker_br_db_net_cidr=$(docker_setup_iproute_cmd "${DOCKER_NETWORK_DB}")
     if [[ ! -z ${docker_br_db_net_cidr} ]]; then
-	echo "Creating Docker bridges: so-db"
+        echo "Creating Docker bridges: ${DOCKER_NETWORK_DB}"
         $(eval ${docker_br_db_net_cidr})
     fi
 }
 
 function docker_create_networks() {
-    declare -a docker_preexisting_networks=("so-core" "so-db")
+    declare -a docker_preexisting_networks=("${DOCKER_NETWORK_CORE}" "${DOCKER_NETWORK_DB}")
     for docker_network in "${docker_preexisting_networks[@]}"; do
         if [ ! "$(docker network ls | grep ${docker_network})" ]; then
             docker network create ${docker_network}
         fi
     done
+}
+
+function docker_initialise_database() {
+    if [[ $(docker volume ls | grep ${DOCKER_VOLUME_DB} | wc -l) -ne 1 ]]; then
+        echo "Creating Docker volume: ${DOCKER_VOLUME_DB}"
+        docker volume create ${DOCKER_VOLUME_DB}
+    fi
 }
 
 function copy_replace_files() {
@@ -121,17 +132,17 @@ function copy_replace_files() {
     if [[ ! -f "${module}/deploy/env" ]]; then
         error_msg="No environment variables found for module: \"${modl_base}\"\n"
         error_msg+="Missing file: $(realpath ${module}/deploy/env)"
-	# If no specific module is provided (via $MODULE), attempt all available modules to deploy
+        # If no specific module is provided (via $MODULE), attempt all available modules to deploy
         if [[ -z $MODULE ]]; then
             text_error "${error_msg}. Skipping current module"
-	    # Determine that this module is to be skipped if:
-	    # (i) there is no envvars file; and (ii) no explicit module is defined
-	    MODULE_SKIP=1
-	# Otherwise, when asking for the specific deployment
+            # Determine that this module is to be skipped if:
+            # (i) there is no envvars file; and (ii) no explicit module is defined
+            MODULE_SKIP=1
+        # Otherwise, when asking for the specific deployment
         else
-	    error_exit "${error_msg}"
-	fi
-	# NB: original checks
+            error_exit "${error_msg}"
+        fi
+        # NB: original checks
         #if [ ! -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
         #    text_error "${error_msg}"
         #else
@@ -155,15 +166,15 @@ function copy_replace_files() {
         cp -Rp ${PWD}/docker/* ${modl_deploy_path}
         # Copy deployment variables
         cp -Rp ${PWD}/deploy-vars.sh ${modl_deploy_path}
-	# 2022/07/22: NEW
+        # 2022/07/22: NEW
         # Copy Dockerfile template in each own's deploy/docker folder (if module does not have one already)
         if [ ! -f ${modl_deploy_path}/${docker_file} ]; then
             # Replace env vars as needed
             cp -Rp ${PWD}/docker/${docker_file}.tpl ${modl_deploy_path}/
             echo "Replacing env vars in template: ${modl_deploy_path}/${docker_file}.tpl ..."
             replace_vars "${modl_deploy_path}/${docker_file}.tpl"
-	fi
-	# 2022/07/22: NOTE THIS IS THE ORIGINAL CODE
+        fi
+        # 2022/07/22: NOTE THIS IS THE ORIGINAL CODE
         # Copy Dockerfile template in each own's deploy/docker folder (if module does not have one already)
         if [ ! -f ${modl_deploy_path}/${docker_file} ]; then
             error_msg="No Dockerfile found for module: \"${modl_base}\"\n"
@@ -175,7 +186,7 @@ function copy_replace_files() {
             error_msg+="Missing file: $(realpath ${modl_deploy_path}/${docker_compose})"
             error_exit "${error_msg}"
         fi
-#	# 2022/07/22: COMMENTED
+#       # 2022/07/22: COMMENTED
 #        # Replace env vars as needed
 #        cp -Rp ${PWD}/docker/${docker_file}.tpl ${modl_deploy_path}/
 #        echo "Replacing env vars in template: ${modl_deploy_path}/${docker_file}.tpl ..."
@@ -201,17 +212,17 @@ function deploy_modules() {
     MODULE_FOUND=0
     for module in ${PWD}/../logic/modules/*; do
         modl_base=$(basename $module)
-	modl_cont="so-${modl_base}"
+        modl_cont="so-${modl_base}"
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
-	    if [ -d ${module} ]; then
+            if [ -d ${module} ]; then
                 title_info "Deploying module: ${modl_base}"
-	        if [ "$(docker ps -a | grep ${modl_cont})" ]; then
+                if [ "$(docker ps -a | grep ${modl_cont})" ]; then
                     text_warning "Module: ${modl_base} already deployed"
                 else
                     setup_modl_deploy_folder "${module}" "${MODULE}"
                 fi
                 # Reset the flag that indicates a module should be skipped
-		MODULE_SKIP=0
+                MODULE_SKIP=0
                 MODULE_FOUND=1
             fi
         fi
@@ -227,3 +238,5 @@ docker_create_networks
 deploy_modules
 # Needed in case Docker networking failed in the environment
 docker_config_networks
+# Create the volume if not there
+docker_initialise_database

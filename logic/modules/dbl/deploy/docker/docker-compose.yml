@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   so_dbl:
-    image: mongo
+    image: mongo:5.0.9
     container_name: so-${SO_MODL_NAME}
     hostname: ${SO_MODL_NAME}
     restart: unless-stopped
@@ -10,8 +10,9 @@ services:
     environment:
       - SO_MODL_NAME
       - SO_MODL_API_PORT
-    #  - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-    #  - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      # https://hub.docker.com/_/mongo
+      - MONGO_INITDB_ROOT_USERNAME=${SO_MODL_ACCESS_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${SO_MODL_ACCESS_USERPASSWORD}
     ports:
       - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
     healthcheck:
@@ -20,9 +21,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    # TODO: use a volume rather than a bind-mount
     volumes:
-      - ${PWD}/../../data:/data/db
+      - so-db:/data/db
+    # Bind-mount version (not preferred by Docker - might be corrupted easily)
+    #volumes:
+    #  - ${PWD}/../../data:/data/db
     networks:
       - so-db
 
@@ -30,3 +33,5 @@ networks:
   so-db:
     driver: bridge
     external: true
+volumes:
+  so-db:
