@@ -78,7 +78,7 @@ class CommandReq():
 
     def mongodb_alerts_metrics(self):
         alerts_metrics = AlertsMetrics()
-        alerts_metrics.vnf_id = self.vnf_id
+        alerts_metrics.xnf_id = self.xnf_id
         alerts_metrics.metric_name = self.metric_name
         alerts_metrics.metric_command = self.metric_command
         alerts_metrics.data = self.data

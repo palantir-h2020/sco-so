@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -10,7 +10,7 @@ class AlertsMetrics(Document):
     """
     Document storing an alert with associated metric
     """
-    vnf_id = StringField()
+    xnf_id = StringField()
     metric_name = StringField()
     metric_command = StringField()
     data = StringField()
