@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -12,18 +12,18 @@ class AlertsMetricsList():
     """
     Retrieve list of registered metrics related with alerts
     """
-    def retrieve_registered_metric_alerts(self, vnf_id, metric_name):
-        vnf_id_arg = "?vnf-id={}".format(vnf_id)
+    def retrieve_registered_metric_alerts(self, xnf_id, metric_name):
+        xnf_id_arg = "?xnf-id={}".format(xnf_id)
         metric_name_arg = "?metric-name={}".format(metric_name)
-        all_args = "?vnf-id={}&metric-name={}".format(vnf_id, metric_name)
+        all_args = "?xnf-id={}&metric-name={}".format(xnf_id, metric_name)
         no_args = ""
-        if (vnf_id is None) and (metric_name is None):
+        if (xnf_id is None) and (metric_name is None):
             args = no_args
         else:
             if metric_name is None:
-                args = vnf_id_arg
+                args = xnf_id_arg
             else:
-                if vnf_id is None:
+                if xnf_id is None:
                     args = metric_name_arg
                 else:
                     args = all_args

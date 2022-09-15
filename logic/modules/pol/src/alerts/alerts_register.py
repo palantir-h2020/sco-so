@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -11,7 +11,7 @@ import pymongo
 
 db_manager = DBManager()
 myclient = pymongo.MongoClient(
-    "mongodb://{}:{}".format(db_manager.host, db_manager.port)
+    "mongodb://{}:{}@{}:{}".format(db_manager.user_id, db_manager.user_password, db_manager.host, db_manager.port)
 )
 db = myclient[db_manager.db_name]
 alert_register = db["alert_register"]

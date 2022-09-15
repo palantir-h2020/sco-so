@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -13,7 +13,7 @@ import pymongo
 
 db_manager = DBManager()
 myclient = pymongo.MongoClient(
-    "mongodb://{}:{}".format(db_manager.host, db_manager.port)
+    "mongodb://{}:{}@{}:{}".format(db_manager.user_id, db_manager.user_password, db_manager.host, db_manager.port)
 )
 db_pol = myclient[db_manager.db_name]
 db_mon = myclient["mon"]
@@ -57,12 +57,12 @@ class Events:
                 hook_endpoint = self.alert_data["hook-endpoint"]
 
                 self.retrive_alert_metric_data()
-                vnf_id = self.alert_metric_data["vnf-id"]
+                xnf_id = self.alert_metric_data["xnf-id"]
                 data = int(self.alert_metric_data["data"])
 
                 if (eval("{} {} {}".format(data, operator, threshold))) == True:
                     webhook = {
-                        "vnf-id": vnf_id,
+                        "xnf-id": xnf_id,
                         "metric-name": self.metric_name,
                         "threshold": threshold,
                         "data": data,
@@ -71,9 +71,9 @@ class Events:
                     requests.post(
                         hook_endpoint, "", webhook
                     )
-                    print("{}. Sending alarm to {}".format(vnf_id, hook_type))
+                    print("{}. Sending alarm to {}".format(xnf_id, hook_type))
                 else:
-                    print("monitoring...{}".format(vnf_id))
+                    print("monitoring...{}".format(xnf_id))
                 sleep_time = monitoring_period - (
                     (time.time() - start_time) % monitoring_period
                 )
@@ -103,12 +103,12 @@ class Events:
         self.alert_metric_data_list = []
         for i in alerts_metrics.find({"metric_name": self.metric_name}):
             self.alert_metric_data = {
-                "vnf-id": "",
+                "xnf-id": "",
                 "metric-name": "",
                 "metric-command": "",
                 "data": "",
             }
-            self.alert_metric_data["vnf-id"] = i["vnf_id"]
+            self.alert_metric_data["xnf-id"] = i["xnf_id"]
             self.alert_metric_data["metric-name"] = i["metric_name"]
             self.alert_metric_data["metric-command"] = i["metric_command"]
             self.alert_metric_data["data"] = i["data"]

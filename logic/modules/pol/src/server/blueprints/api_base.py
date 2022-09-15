@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -47,9 +47,9 @@ def alerts_register() -> HttpResponse:
 
 @so_blueprints.route("/pol/metrics", methods=["GET"])
 def alerts_metrics() -> HttpResponse:
-    vnf_id = request.args.get("vnf-id")
+    xnf_id = request.args.get("xnf-id")
     metric_name = request.args.get("metric-name")
-    data = alerts_metrics_list.retrieve_registered_metric_alerts(vnf_id, metric_name)
+    data = alerts_metrics_list.retrieve_registered_metric_alerts(xnf_id, metric_name)
     return HttpResponse.infer(data, HttpCode.OK)
 # curl http://localhost:50108/pol/metrics
 
@@ -58,7 +58,7 @@ def alerts_metrics() -> HttpResponse:
 def alerts_metrics_register() -> HttpResponse:
     data = alerts_metrics_registration.alert_metric_registration(request)
     return HttpResponse.infer(data, HttpCode.OK)
-# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50108/pol/metrics -d '{"vnf-id": "172.28.2.192:9100", "vnf-ip": "172.28.2.192", "metric-name": "__so_pol__list", "metric-command": "ls"}'
+# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50108/pol/metrics -d '{"xnf-id": "172.28.2.192:9100", "xnf-ip": "172.28.2.192", "metric-name": "__so_pol__list", "metric-command": "ls"}'
 # bg monitoring
 
 @so_blueprints.route("/pol/events", methods=["POST"])
