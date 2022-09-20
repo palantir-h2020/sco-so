@@ -61,25 +61,27 @@ fi
 gen_cfg_path="${PWD}/../../../../../cfg"
 modl_cfg_path="${PWD}/../../cfg"
 if [[ -d ${gen_cfg_path} ]]; then
-  if [[ ! -d ${modl_cfg_path} ]]; then
-    mkdir -p ${modl_cfg_path}
-  fi
-  for cfg_file in $(ls ${gen_cfg_path}/*); do
-      cfg_file_nosample="${cfg_file/.sample/}"
-      if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
-        error_exit "Configuration file \"$(realpath ${cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${cfg_file_nosample})\" and adjust the values"
-      fi
-  done
-  cp -Rp ${gen_cfg_path} .
-  # Then, copy local-related configuration for the
-  # module and use sample config files when needed
-  cp -Rp ${modl_cfg_path}/* cfg/
-  for cfg_file in $(ls ${PWD}/cfg/*); do
-      cfg_file_nosample="${cfg_file/.sample/}"
-      if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
-          mv $cfg_file $cfg_file_nosample
-      fi
-  done
+    if [[ ! -d ${modl_cfg_path} ]]; then
+      mkdir -p ${modl_cfg_path}
+    fi
+    for cfg_file in $(ls ${gen_cfg_path}/*); do
+        cfg_file_nosample="${cfg_file/.sample/}"
+        if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
+          error_exit "Configuration file \"$(realpath ${cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${cfg_file_nosample})\" and adjust the values"
+        fi
+    done
+    cp -Rp ${gen_cfg_path} .
+    # Then, copy local-related configuration for the
+    # module and use sample config files when needed
+    if [[ ! -z $(ls -A ${modl_cfg_path}) ]]; then
+        cp -Rp ${modl_cfg_path}/* cfg/
+    fi
+    for cfg_file in $(ls ${PWD}/cfg/*); do
+        cfg_file_nosample="${cfg_file/.sample/}"
+        if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
+            mv $cfg_file $cfg_file_nosample
+        fi
+    done
 fi
 
 # Copy keys
@@ -111,12 +113,19 @@ fi
 
 # Deployment upon generation/build of images
 if [[ "${build_only}" != "build" ]] && [[ -f docker-compose.yml ]]; then
-    docker-compose up -d
-    docker-compose ps
+    docker-compose -p ${SO_MODL_NAME} up -d
+    docker-compose -p ${SO_MODL_NAME} ps
 else
     # Build the image only if not already present (two rows: headers & image)
     if [[ $(docker image ls ${docker_image_prefix}_${SO_MODL_NAME} | wc -l) -lt 2 ]]; then
         # Explicitly stating the Dockerfile name, even if the default option
         docker build -t ${docker_image_prefix}_${SO_MODL_NAME} -f Dockerfile .
     fi
+fi
+
+# MON-specific
+if [[ ${SO_MODL_NAME} == "mon" ]]; then
+    # Copy the file "prometheus-targets.json" in the volume
+    # This file is shared between so-mon and so-mon-prometheus
+    docker cp ${modl_loc_path}/prometheus-targets.json so-${SO_MODL_NAME}:/share
 fi

@@ -40,7 +40,7 @@ function setup_env_vars() {
     echo "Reading env vars..."
     # fetch_env_vars "${module}/deploy/env"
     if [[ ! -f "${module}/deploy/env" ]]; then
-        error_msg="No environment variables found for module: \"${modl_base}\"\n"
+        error_msg="No environment variables found for module \"${modl_base}\"\n"
         error_msg+="Missing file: $(realpath ${module}/deploy/env)"
         # If no specific module is provided (via $MODULE), attempt all available modules to deploy
         if [[ -z $MODULE ]]; then
@@ -82,10 +82,12 @@ function undeploy_modules() {
         modl_cont="so-${modl_base}"
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
             if [ -d ${module} ]; then
-                title_info "Undeploying module: ${modl_base}"
-                if [ ! "$(docker ps -a | grep ${modl_cont})" ]; then
-                    text_warning "Module: ${modl_base} not deployed"
-                else
+                title_info "Undeploying module \"${modl_base}\""
+		running_container=$(docker ps -a | grep ${modl_cont})
+                if [ ! "${running_container}" ]; then
+                    text_warning "Module \"${modl_base}\" not deployed"
+		fi
+                if [[ "${running_container}" || ${FORCE} == "true" ]]; then
                     setup_env_vars "${module}"
                     setup_modl_undeploy_folder "${module}"
                 fi

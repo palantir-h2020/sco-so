@@ -32,6 +32,7 @@ MODULE_SKIP=0
 DOCKER_NETWORK_DB="so-db"
 DOCKER_NETWORK_CORE="so-core"
 DOCKER_VOLUME_DB="so-db"
+DOCKER_VOLUME_MON="so-mon"
 
 source deploy-vars.sh
 source deploy-opts.sh
@@ -89,21 +90,21 @@ function docker_config_networks() {
     ## Check 1st routing rule
     docker_if_docker0_ip_route=$(ip route show ${docker_if_docker0_config} | wc -l)
     if [[ ${docker_if_docker0_ip_route} -eq 0 ]]; then
-        echo "Creating Docker interfaces: docker0"
+        echo "Creating Docker interfaces \"docker0\""
         sudo ip addr add dev docker0 ${docker_if_docker0_config}
     fi
 
     ## Check 2nd routing rule
     docker_br_so_net_cidr=$(docker_setup_iproute_cmd "${DOCKER_NETWORK_CORE}")
     if [[ ! -z ${docker_br_so_net_cidr} ]]; then
-        echo "Creating Docker bridges: ${DOCKER_NETWORK_CORE}"
+        echo "Creating Docker bridges \"${DOCKER_NETWORK_CORE}\""
         $(eval ${docker_br_so_net_cidr})
     fi
 
     ## Check 3rd routing rule
     docker_br_db_net_cidr=$(docker_setup_iproute_cmd "${DOCKER_NETWORK_DB}")
     if [[ ! -z ${docker_br_db_net_cidr} ]]; then
-        echo "Creating Docker bridges: ${DOCKER_NETWORK_DB}"
+        echo "Creating Docker bridges \"${DOCKER_NETWORK_DB}\""
         $(eval ${docker_br_db_net_cidr})
     fi
 }
@@ -112,16 +113,20 @@ function docker_create_networks() {
     declare -a docker_preexisting_networks=("${DOCKER_NETWORK_CORE}" "${DOCKER_NETWORK_DB}")
     for docker_network in "${docker_preexisting_networks[@]}"; do
         if [ ! "$(docker network ls | grep ${docker_network})" ]; then
+            echo "Creating Docker network \"${docker_network}\""
             docker network create ${docker_network}
         fi
     done
 }
 
-function docker_initialise_database() {
-    if [[ $(docker volume ls | grep ${DOCKER_VOLUME_DB} | wc -l) -ne 1 ]]; then
-        echo "Creating Docker volume: ${DOCKER_VOLUME_DB}"
-        docker volume create ${DOCKER_VOLUME_DB}
-    fi
+function docker_create_volumes() {
+    declare -a docker_preexisting_volumes=("${DOCKER_VOLUME_DB}" "${DOCKER_VOLUME_MON}")
+    for docker_volume in "${docker_preexisting_volumes[@]}"; do
+        if [ ! "$(docker volume ls | grep ${docker_volume})" ]; then
+            echo "Creating Docker volume \"${docker_volume}\""
+            docker volume create ${docker_volume}
+        fi
+    done
 }
 
 function copy_replace_files() {
@@ -215,9 +220,9 @@ function deploy_modules() {
         modl_cont="so-${modl_base}"
         if [ -z $MODULE ] || ([ ! -z $MODULE ] && [ $modl_base == $MODULE ]); then
             if [ -d ${module} ]; then
-                title_info "Deploying module: ${modl_base}"
+                title_info "Deploying module \"${modl_base}\""
                 if [ "$(docker ps -a | grep ${modl_cont})" ]; then
-                    text_warning "Module: ${modl_base} already deployed"
+                    text_warning "Module \"${modl_base}\" already deployed"
                 else
                     setup_modl_deploy_folder "${module}" "${MODULE}"
                 fi
@@ -228,15 +233,16 @@ function deploy_modules() {
         fi
     done
     if ([ ! -z $MODULE ] && [ ${MODULE_FOUND} -eq 0 ]); then
-        text_warning "Module: ${MODULE} does not exist"
+        text_warning "Module \"${MODULE}\" does not exist"
     fi
 }
 
 
 docker_install
+# Create volumes if not there
+docker_create_volumes
+# Create networks if not there
 docker_create_networks
 deploy_modules
 # Needed in case Docker networking failed in the environment
 docker_config_networks
-# Create the volume if not there
-docker_initialise_database

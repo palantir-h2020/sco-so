@@ -7,8 +7,8 @@
 
 # Undeployment
 if [[ -f ${docker_compose} ]]; then
-    docker-compose ps
-    docker-compose down
+    docker-compose -p ${SO_MODL_NAME} ps
+    docker-compose -p ${SO_MODL_NAME} down
 fi
 
 # Remove utils-related dependencies and sources

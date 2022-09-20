@@ -165,6 +165,7 @@ function usage() {
     echo -e "  OPTIONS"
     echo -e "     -h / --help:    print this help"
     echo -e "     [-s]:           operate on a specific module from the following: $(get_dirs_under_path ../logic/module)"
+    echo -e "     [-f]:           force operation overriding basic checks"
     if [[ $0 == *"-deploy"* ]]; then
       echo -e "     [-m]:           only create container images (\"build\") or create+instantiate (default)"
     fi
@@ -179,10 +180,11 @@ MODULE=""
 # Mode: "build" (generate Docker images) or deploy (generate+instantiate, default)
 MODE=""
 REGISTRY="false"
+FORCE="false"
 # Counter with the number of selected options
 OPTIONS_SELECTED=0
 
-while getopts ":s:m:-: rh" o; do
+while getopts ":s:m:-: rfh" o; do
     case "${o}" in
         s)
             MODULE="${OPTARG}"
@@ -194,6 +196,9 @@ while getopts ":s:m:-: rh" o; do
             ;;
         r)
             REGISTRY="true"
+            ;;
+        f)
+            FORCE="true"
             ;;
         -)
             [ "${OPTARG}" == "help" ] && usage && exit 0
