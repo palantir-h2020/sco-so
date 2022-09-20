@@ -125,7 +125,12 @@ fi
 
 # MON-specific
 if [[ ${SO_MODL_NAME} == "mon" ]]; then
-    # Copy the file "prometheus-targets.json" in the volume
-    # This file is shared between so-mon and so-mon-prometheus
-    docker cp ${modl_loc_path}/prometheus-targets.json so-${SO_MODL_NAME}:/share
+    prometheus_targets_file="/share/prometheus-targets.json"
+    prom_file_in_volume=$(docker exec -it so-mon ls ${prometheus_targets_file})
+    prom_file_posix_code=$?
+    # If not existing (or error, POSIX code != 0); copy the file "prometheus-targets.json" in the volume
+    if [[ ${prom_file_in_volume} != *"${prometheus_targets_file}"* || ${prom_file_posix_code} -ne 0 ]]; then
+        # This file is shared between so-mon and so-mon-prometheus
+        docker cp ${modl_loc_path}/prometheus-targets.json so-${SO_MODL_NAME}:/share
+    fi
 fi
