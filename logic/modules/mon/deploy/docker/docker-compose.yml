@@ -19,8 +19,9 @@ services:
       # Bind and expose the server port to the one defined in the .env file
       - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
     volumes:
+      - so-mon:/share
       # The API in so-mon must be able to modify this file
-      - "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:rw,shared"
+      #- "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:rw,shared"
     healthcheck:
       test: curl -f http://so_${SO_MODL_NAME}:${SO_MODL_API_PORT}/status
       interval: 60s
@@ -41,9 +42,12 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - "${PWD}/local/prometheus.yml:/etc/prometheus/prometheus.yml:rw,private"
+      - so-mon:/share
+      # Kept to avoid providing a custom Dockerfile for so-mon-prometheus
+      #- "${PWD}/local/prometheus.yml:/etc/prometheus/prometheus.yml:rw,private"
+      - "${PWD}/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro,private"
       # The Prometheus server just needs to read this file
-      - "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:ro,shared"
+      #- "${PWD}/local/prometheus-targets.json:/opt/prometheus-targets.json:ro,shared"
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://so-${SO_MODL_NAME}-prometheus:9090/metrics
       interval: 60s
@@ -60,3 +64,5 @@ networks:
   so-core:
     driver: bridge
     external: true
+volumes:
+  so-mon:
