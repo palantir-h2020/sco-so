@@ -58,7 +58,7 @@ def alerts_metrics() -> HttpResponse:
 def alerts_metrics_register() -> HttpResponse:
     data = alerts_metrics_registration.alert_metric_registration(request)
     return HttpResponse.infer(data, HttpCode.OK)
-# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50108/pol/metrics -d '{"xnf-id": "172.28.2.192:9100", "xnf-ip": "172.28.2.192", "metric-name": "__so_pol__list", "metric-command": "ls"}'
+# curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50108/pol/metrics -d '{"xnf-id": "172.28.2.27:9100", "xnf-ip": "172.28.2.27", "metric-name": "__so_pol__list", "metric-command": "ls"}'
 # bg monitoring
 
 @so_blueprints.route("/pol/events", methods=["POST"])

@@ -15,14 +15,20 @@ class NodeExporterSetup:
 
     def __init__(self) -> None:
         self.node_exporter_docker_cmd = (
-            "sudo docker pull prom/node-exporter && "
+            "sudo apt update && "
+            + "sudo apt upgrade -y && "
+            + "sudo apt-get remove docker docker-engine docker.io -y && "
+            + "sudo apt install docker.io -y && "
+            + "sudo snap install docker && "
+            + "sudo docker pull prom/node-exporter && "
             + "sudo docker run --name prometheus-node-exporter -itd "
             + "-p 9100:9100 prom/node-exporter"
         )
         self.node_exporter_uninstall_cmd = (
             "sudo docker stop prometheus-node-exporter && "
             + "sudo docker rm prometheus-node-exporter && "
-            + "sudo docker rmi prom/node-exporter"
+            + "sudo docker rmi prom/node-exporter && "
+            + "sudo apt-get remove docker docker-engine docker.io -y"
         )
         pass
 
@@ -49,10 +55,12 @@ class NodeExporterSetup:
                     xnf_response = ExecuteCommand.execute_command(
                             target, command)
                     xnf_list_response.append(xnf_response)
-                return "Node Exporter Installation status on xNF(s) {}: {}"\
-                       .format(xnf_ip, xnf_list_response)
+                response = {"Response": "Node Exporter Installation status on xNF(s) {}: {}"\
+                       .format(xnf_ip, xnf_list_response)}
+                return response
             else:
-                return "xnf_ip must be a list"
+                response = {"Response": "xnf_ip must be a list"}
+                return response
         if request.method == "DELETE":
             if type(xnf_ip) == list:
                 xnf_list_response = []
@@ -61,7 +69,9 @@ class NodeExporterSetup:
                     xnf_response = ExecuteCommand.execute_command(
                             target, command)
                     xnf_list_response.append(xnf_response)
-                return "Node Exporter Uninstall status on xNF(s) {}: {}"\
-                       .format(xnf_ip, xnf_list_response)
+                response = {"Response": "Node Exporter Uninstall status on xNF(s) {}: {}"\
+                       .format(xnf_ip, xnf_list_response)}
+                return response
             else:
-                return "xnf_ip must be a list"
+                response = {"Response": "xnf_ip must be a list"}
+                return response

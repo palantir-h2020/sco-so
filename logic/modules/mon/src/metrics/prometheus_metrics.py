@@ -61,13 +61,15 @@ class PrometheusMetrics():
                     metric_value = result[xnf_index]["value"]
                     metrics_dict["metric-value"] = metric_value
 
-                except KeyError:
-                    # Print temporal, para pruebas.
-                    print("Cannot obtain given metric from instance={}"
-                          .format(instance))
-                    metrics_dict["metric-value"] = "N/A"
-                return metrics_dict
+                except Exception:
+                    err_message = "Cannot obtain given metric from instance={}".format(instance)
+                    err = {"Error": err_message}
+                return err
             except Exception:
-                return "Prometheus server is not running"
+                err_message = "Prometheus server is not running"
+                err = {"Error": err_message}
+                return err
         else:
-            return "{} target is not registered".format(target_id)
+            err_message = "{} target is not registered".format(target_id)
+            err = {"Error": err_message}
+            return err

@@ -11,8 +11,8 @@ class AlertsMetricsRegister:
     Registration of alerts related to metrics
     """
     def __init__(self) -> None:
-        self.mon = "http://localhost:50106/mon/metrics/xnf"
-        self.mon_bg = "http://localhost:50106/mon/metrics/background"
+        self.mon = "http://so-mon:50106/mon/metrics/xnf"
+        self.mon_bg = "http://so-mon:50106/mon/metrics/background"
         pass
     def alert_metric_registration(self, request):
         request_body = request.json
@@ -40,4 +40,5 @@ class AlertsMetricsRegister:
                 "metric-command": self.metric_command,
             },
         )
-        return "OK"
+        message = {"Message": "Process done correctly"}
+        return message

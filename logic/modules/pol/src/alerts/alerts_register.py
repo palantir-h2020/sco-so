@@ -42,20 +42,25 @@ class AlertsRegister():
                     alert_name_list.append(names)
 
                 if self.alert_name in alert_name_list:
-                    return "Alert name is already registered, use other name"
+                    response = {"Response": "Alert name is already registered, use other name"}
+                    return response
                 else:
                     if self.operator in self.operator_list:
                         self.mongodb_alert_registration()
-                        return "OK"
+                        response = {"Response": "Process done correctly"}
+                        return response
                     else:
-                        return "Operator must be: <, ==, >, <=, >="
+                        response = {"Response": "Operator must be: <, ==, >, <=, >="}
+                        return response
             except:
                 if self.operator in self.operator_list:
                     self.mongodb_alert_registration()
-                    return "OK"
+                    response = {"Response": "Process done correctly"}
+                    return response
                 else:
-                    return "Operator must be: <, ==, >, <=, >="
-
+                    response = {"Response": "Operator must be: <, ==, >, <=, >="}
+                    return response
+                   
         elif request.method == "PUT":
             alert_register.update_one({}, {"$set": {"alert-name": "list"}})
             return "PUT"

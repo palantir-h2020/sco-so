@@ -40,31 +40,19 @@ class Metrics:
     def exporter_metrics(self, xnf_id, metric_name):
         self.retrieve_targets_list()
         self.parser_config()
-        if (xnf_id is None) and (metric_name is None):
-            metrics_list = []
-            for target in self.targets_list:
-                exporter_data = requests.get(
-                    "{}://{}/{}".format(
-                        self.protocol, target, self.query_endpoint)
-                )
-                exporter_data_text = exporter_data.text
-                metrics_list.append(exporter_data_text)
-            return metrics_list
-        else:
-            if metric_name is None:
-                if xnf_id in self.targets_list:
+        try:
+            if (xnf_id is None) and (metric_name is None):
+                metrics_list = []
+                for target in self.targets_list:
                     exporter_data = requests.get(
                         "{}://{}/{}".format(
-                            self.protocol, xnf_id, self.query_endpoint)
+                            self.protocol, target, self.query_endpoint)
                     )
                     exporter_data_text = exporter_data.text
-                    return exporter_data_text
-                else:
-                    return "{} Target is not registered".format(xnf_id)
+                    metrics_list.append(exporter_data_text)
+                return metrics_list
             else:
-                if xnf_id is None:
-                    return ""
-                else:
+                if metric_name is None:
                     if xnf_id in self.targets_list:
                         exporter_data = requests.get(
                             "{}://{}/{}".format(
@@ -74,6 +62,23 @@ class Metrics:
                         return exporter_data_text
                     else:
                         return "{} Target is not registered".format(xnf_id)
+                else:
+                    if xnf_id is None:
+                        return ""
+                    else:
+                        if xnf_id in self.targets_list:
+                            exporter_data = requests.get(
+                                "{}://{}/{}".format(
+                                    self.protocol, xnf_id, self.query_endpoint)
+                            )
+                            exporter_data_text = exporter_data.text
+                            return exporter_data_text
+                        else:
+                            return "{} Target is not registered".format(xnf_id)
+        except Exception:
+            err_message = "An error has occurred, please verify Prometheus is running"
+            err = {"Error": err_message}
+            return err
 
     def mongodb_metrics(self, xnf_id, metric_name):
         if (xnf_id is None) and (metric_name is None):
@@ -94,9 +99,11 @@ class Metrics:
                         mongo_list.append(mongo_dict)
                 return mongo_list
             except Exception:
-                return "{} {}".format(
+                err_message = "{} {}".format(
                         "An error ocurred with your request.",
                         "Check your MongoDB connection")
+                err = {"Error": err_message}
+                return err
         else:
             if metric_name is None:
                 if xnf_id in self.targets_list:

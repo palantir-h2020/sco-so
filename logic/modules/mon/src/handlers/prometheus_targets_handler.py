@@ -124,7 +124,7 @@ class PrometheusTargetsHandler(object):
         db_targets = self._get_targets_from_db()
         # An already existing target cannot be added
         if url == "":
-            return HttpCode.BAD_REQUEST
+            return HttpCode.BAD_REQUEST 
         if url in db_targets:
             return HttpCode.CONFLICT
         targets = self._construct_target_model("add", "", url)
@@ -150,6 +150,7 @@ class PrometheusTargetsHandler(object):
         if old_url not in db_targets:
             return HttpCode.CONFLICT
         targets = self._construct_target_model("replace", old_url, new_url)
+        node_exporter_setup.uninstall_node_exporter(old_url)
         targets.save()
         # ...
         targets_list = self._get_targets_from_file()

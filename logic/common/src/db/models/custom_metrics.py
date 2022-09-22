@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # Copyright 2021-present i2CAT
@@ -7,12 +7,13 @@
 from mongoengine import DateField, Document,\
     StringField
 
-class RemoteCommand(Document):
+
+class CustomMetrics(Document):
     """
     Document storing the remote command from the user and
     keep accountancy on their modifications.
     """
-    vnf_id = StringField()
+    xnf_id = StringField()
     metric_name = StringField()
     metric_command = StringField()
     data = StringField()

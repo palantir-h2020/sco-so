@@ -8,7 +8,7 @@ from datetime import datetime
 from common.db.models.alerts.alerts_metrics import AlertsMetrics
 from common.config.parser.fullparser import FullConfParser
 from common.db.models.prometheus_targets import PrometheusTargets
-from common.db.models.metrics.custom_metrics import CustomMetrics
+from common.db.models.custom_metrics import CustomMetrics
 from .execute_command import ExecuteCommand
 from prometheus_client import CollectorRegistry, Gauge, pushadd_to_gateway
 
@@ -92,11 +92,13 @@ class Pushgateway():
                     pushadd_to_gateway("localhost:9091", job=self.xnf_ip,
                                        registry=registry)
                 except Exception:
-                    return "{} {}. {}".format(
+                    err_message = "{} {}. {}".format(
                         self.pushgateway_server_endpoint,
                         "Pushgateway is not reachable.",
                         "Please check the connection"
                     )
+                    err = {"Error": err_message}
+                    return err
                 return self.result
             else:
                 self.result = {
@@ -107,4 +109,6 @@ class Pushgateway():
                 }
                 return self.result
         else:
-            return "{} target is not registered".format(self.xnf_id)
+            err_message = "{} target is not registered".format(self.xnf_id)
+            err = {"Error": err_message}
+            return err

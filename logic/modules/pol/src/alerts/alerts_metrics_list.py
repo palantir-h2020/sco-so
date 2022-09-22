@@ -28,7 +28,7 @@ class AlertsMetricsList():
                 else:
                     args = all_args
        
-        self.mon_alerts = "http://localhost:50106/mon/metrics/alerts{}".format(args)
+        self.mon_alerts = "http://so-mon:50106/mon/metrics/alerts{}".format(args)
         
         registered_alerts = requests.get(self.mon_alerts)
         if isinstance(registered_alerts, Response):

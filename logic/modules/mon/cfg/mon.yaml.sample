@@ -3,7 +3,7 @@ general:
 
 prometheus:
   protocol: http
-  host: localhost
+  host: so-mon-prometheus
   port: 9090
   user-name: ubuntu
   query_endpoint: api/v1/query?query=

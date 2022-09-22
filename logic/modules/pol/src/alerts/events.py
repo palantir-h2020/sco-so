@@ -80,7 +80,8 @@ class Events:
                 time.sleep(sleep_time)
 
         else:
-            return "Alert is not registered"
+            response = {"Response": "Alert is not registered"}
+            return response
 
     def retrive_alert_data(self):
         for i in alert_register.find({"alert_name": self.alert_name}):

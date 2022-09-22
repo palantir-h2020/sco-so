@@ -45,18 +45,17 @@ def targets_list() -> HttpResponse:
 @so_blueprints.route("/mon/targets", methods=["POST", "PUT", "DELETE"])
 def targets_handle() -> HttpResponse:
     return_code = prometheus_targets_handler.update_target(request)
-    return HttpResponse.infer("OK", return_code)
+    return HttpResponse.infer({"Response": "http code {}".format(return_code)} , return_code)
 
 
 @so_blueprints.route("/mon/targets/metrics", methods=["GET"])
 def xnf_metrics() -> HttpResponse:
     xnf_id = request.args.get("xnf-id")
     metric_name = request.args.get("metric-name")
-    data = [
-        metrics_.exporter_metrics(xnf_id, metric_name),
-        metrics_.mongodb_metrics(xnf_id, metric_name)
-    ]
-    data = {"results": data}
+    data = {"results": {
+    "generic": metrics_.exporter_metrics(xnf_id, metric_name),
+    "custom": metrics_.mongodb_metrics(xnf_id, metric_name)
+    }}
     return HttpResponse.infer(data, HttpCode.OK)
 
 
