@@ -39,4 +39,4 @@ xnfs:
   general:
     user: ubuntu
     # Name of key located under ${root}/keys/
-    key: network_function
+    ssh-key: network_function

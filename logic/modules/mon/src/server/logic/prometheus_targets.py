@@ -51,6 +51,7 @@ class PrometheusTarget(object):
             target_url = request_body.get("current-url", None)
             new_url = request_body.get("new-url", None)
         # Call each specific function
+        # FIXME: the comment below is not yet implemented
         # TODO: inside the PrometheusTargetsHandler there should be
         # introduced means to verify the content is properly
         # updated w.r.t. to the request, so this returns a boolean

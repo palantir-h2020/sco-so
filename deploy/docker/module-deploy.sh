@@ -100,15 +100,24 @@ if [[ -d ${modl_loc_path} ]]; then
 fi
 # MON-specific
 if [[ ${SO_MODL_NAME} == "mon" ]]; then
-  gen_cfg_infra_file="${gen_cfg_path}/infra.yaml"
-  mon_infra_files=$(cat ${gen_cfg_infra_file} | grep file | grep yaml | cut -d ":" -f2 | tr -d " " | tr -d "\"")
-  for infra_file in ${mon_infra_files[$@]}; do
-    infra_file_name=$(basename "${infra_file}")
-    infra_cfg_file="${modl_loc_path}/${infra_file_name}"
-    if [[ ! -f ${infra_cfg_file} ]]; then
-      error_exit "Configuration file \"$(realpath ${infra_cfg_file})\" (requested by configuration file \"$(realpath ${gen_cfg_infra_file})\") is not personalised. To do so, copy the file into \"$(realpath ${modl_loc_path})\" and adjust the values"
+    gen_cfg_infra_file="${gen_cfg_path}/infra.yaml"
+    mon_infra_files=$(cat ${gen_cfg_infra_file} | grep file | grep yaml | cut -d ":" -f2 | tr -d " " | tr -d "\"")
+    for infra_file in ${mon_infra_files[$@]}; do
+        infra_file_name=$(basename "${infra_file}")
+        infra_cfg_file="${modl_loc_path}/${infra_file_name}"
+        if [[ ! -f ${infra_cfg_file} ]]; then
+          error_exit "Configuration file \"$(realpath ${infra_cfg_file})\" (requested by configuration file \"$(realpath ${gen_cfg_infra_file})\" to be able to extract metrics from the monitored infrastructures) is not personalised. To do so, copy the file into \"$(realpath ${modl_loc_path})\" and adjust the values"
+        fi
+    done
+    gen_cfg_so_file="${gen_cfg_path}/so.yaml"
+    mon_xnf_ssh_key=$(cat ${gen_cfg_so_file} | grep ssh-key  | cut -d ":" -f2 | tr -d " " | tr -d "\"")
+    if [[ ! -s ${common_keys_path}/${mon_xnf_ssh_key} ]] ; then
+        error_exit "SSH key \"$(realpath ${common_keys_path}/${mon_xnf_ssh_key})\" (requested by configuration file \"$(realpath ${gen_cfg_so_file})\" to be able to reach the monitored targets and extract data) is not defined yet. To do so, copy the proper SSH key into \"$(realpath ${common_keys_path})\""
     fi
-  done
+    mon_xnf_ssh_key_permissions="-rw-rw-r--"
+    if [[ $(stat -c %A ${common_keys_path}/${mon_xnf_ssh_key}) != "${mon_xnf_ssh_key_permissions}" ]]; then
+        error_exit "SSH key \"$(realpath ${common_keys_path}/${mon_xnf_ssh_key})\" (requested by configuration file \"$(realpath ${gen_cfg_so_file})\" to be able to reach the monitored targets and extract data) has improper permissions. Please set these to \"${mon_xnf_ssh_key_permissions}\""
+    fi
 fi
 
 # Deployment upon generation/build of images

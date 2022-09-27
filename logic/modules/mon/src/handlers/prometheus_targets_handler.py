@@ -15,8 +15,8 @@ import copy
 import json
 import shutil
 
-
 node_exporter_setup = NodeExporterSetup()
+
 
 class PrometheusTargetsHandler(object):
 
@@ -124,7 +124,7 @@ class PrometheusTargetsHandler(object):
         db_targets = self._get_targets_from_db()
         # An already existing target cannot be added
         if url == "":
-            return HttpCode.BAD_REQUEST 
+            return HttpCode.BAD_REQUEST
         if url in db_targets:
             return HttpCode.CONFLICT
         targets = self._construct_target_model("add", "", url)
@@ -133,7 +133,8 @@ class PrometheusTargetsHandler(object):
         targets_list = self._get_targets_from_file()
         targets_list.append(url)
         self._update_contents(targets_list)
-       
+
+        # FIXME: the comment below is not yet implemented
         # TODO: introduce means to verify the content is properly
         # updated w.r.t. to the request
         if url in targets_list:
@@ -157,7 +158,8 @@ class PrometheusTargetsHandler(object):
         index_target = targets_list.index(old_url)
         targets_list[index_target] = new_url
         self._update_contents(targets_list)
-       
+
+        # FIXME: the comment below is not yet implemented
         # TODO: introduce means to verify the content is properly
         # updated w.r.t. to the request
         if old_url in targets_list:
@@ -181,6 +183,7 @@ class PrometheusTargetsHandler(object):
         index_target = targets_list.index(url)
         del(targets_list[index_target])
         self._update_contents(targets_list)
+        # FIXME: the comment below is not yet implemented
         # TODO: introduce means to verify the content is properly
         # updated w.r.t. to the request
         if url in targets_list:

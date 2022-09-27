@@ -17,8 +17,6 @@ from metrics.metrics import Metrics
 from metrics.prometheus_metrics import PrometheusMetrics
 from metrics.pushgateway import Pushgateway
 from server.logic.prometheus_targets import PrometheusTarget
-from server.logic.vim import VIM
-from server.logic.vnf import VNF
 
 
 so_blueprints = Blueprint("so__mon__base", __name__)
@@ -35,28 +33,35 @@ prometheus_metrics = PrometheusMetrics()
 pushgateway = Pushgateway()
 
 
+# FIXME look at logic/modules/lcm/src/server/blueprints:
+# api_base.py
+# api_lcm_ns.py
+# api_lcm_vnf.py
+# In api_base.py only this method below (/mon) should be
+#
+# Right now, some methods are being loaded twice => Repeated => Bad
+# (Check logic/modules/mon/src/server/blueprints/api_mon_vnf.py)
+# I have commented all methods there so far, but you must
+# move methods in this module to other modules depending on their
+# focus, like:
+# api_mon_targets.py
+# api_mon_metrics.py
+# api_alerts.py
 @so_blueprints.route("/mon", methods=["GET"])
 def base() -> HttpResponse:
     data = {"name": "mon_api"}
     return HttpResponse.infer(data, HttpCode.OK)
 
 
-@so_blueprints.route("/mon/vim", methods=["GET"])
-def vim_list() -> HttpResponse:
-    data = VIM.vim_list()
-    return HttpResponse.infer(data, HttpCode.OK)
-
-
-@so_blueprints.route("/mon/vnf", methods=["GET"])
-def vnf_list() -> HttpResponse:
-    data = VNF.vnf_list()
-    return HttpResponse.infer(data, HttpCode.OK)
-
-
+# FIXME: start using SOEndpoints.* (and extending as needed). Check
+# what is done in src/server/blueprints/api_mon_infra.py as example
+# FIXME: remove these cURL calls from the source code everywhere
+# These do not belong in a script but in the README!
 @so_blueprints.route("/mon/targets", methods=["GET"])
 def targets_list() -> HttpResponse:
-    data = {"targets": prometheus_targets_handler.targets_list()}
-    data = {"results": data}
+    data = {
+        "targets": prometheus_targets_handler.targets_list()
+    }
     return HttpResponse.infer(data, HttpCode.OK)
 # curl http://127.0.0.1:50106/mon/targets
 
@@ -64,7 +69,7 @@ def targets_list() -> HttpResponse:
 @so_blueprints.route("/mon/targets", methods=["POST", "PUT", "DELETE"])
 def targets_handle() -> HttpResponse:
     return_code = prometheus_targets_handler.update_target(request)
-    return HttpResponse.infer({"Response": "http code {}".format(return_code)} , return_code)
+    return HttpResponse.infer(targets_list().json, return_code)
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X POST http://127.0.0.1:50106/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X PUT http://127.0.0.1:50106/mon/targets -d '{"current-url": "target-ip-or-fqdn:9090", "new-url": "10.10.10.11:9090"}'
 # curl -i -H "Accept: application/json" -H "Content-Type: application/json" -X DELETE http://127.0.0.1:50106/mon/targets -d '{"url": "target-ip-or-fqdn:9090"}'
@@ -74,14 +79,17 @@ def targets_handle() -> HttpResponse:
 def xnf_metrics() -> HttpResponse:
     xnf_id = request.args.get("xnf-id")
     metric_name = request.args.get("metric-name")
-    data = {"results": {
-    "generic": metrics_.exporter_metrics(xnf_id, metric_name),
-    "custom": metrics_.mongodb_metrics(xnf_id, metric_name)
-    }}
+    data = {
+        "generic": metrics_.exporter_metrics(xnf_id, metric_name),
+        "custom": metrics_.mongodb_metrics(xnf_id, metric_name)
+    }
     return HttpResponse.infer(data, HttpCode.OK)
 # curl http://127.0.0.1:50106/mon/targets/metrics 
 
 
+# FIXME: GET methods shall have no payload
+# Instead, these must be like:
+# -X GET http://127.0.0.1:50106/mon/metrics?xnf-id=172.28.2.27:9100&xnf-ip=172.28.2.27&metric-name=node_disk_info
 @so_blueprints.route("/mon/metrics", methods=["GET"])
 def xnf_metrics_handle() -> HttpResponse:
     data = prometheus_metrics.prometheus_metrics(request)

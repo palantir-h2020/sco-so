@@ -22,13 +22,16 @@ class ExecuteCommand:
         prom = mon.get("prometheus")
         user_name = prom.get("user-name")
         xnf_ip = xnf_ip
+        # FIXME hist is hardcoded! It must be read from cfg/so.yaml
+        # Check logic/common/src/nfv/nfvo/osm/osm.py, line 132; for an example
         key_filename = os.path.abspath("keys/network_function")
         command = command
 
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(xnf_ip, username=user_name, key_filename=key_filename)
+            client.connect(xnf_ip, username=user_name,
+                           key_filename=key_filename)
             STDIN, STDOUT, STDERR = client.exec_command(command)
             time.sleep(1)
             COMMAND_RESPONSE = STDOUT.read().decode()

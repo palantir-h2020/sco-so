@@ -136,7 +136,7 @@ class OSM():
             curr_path = os.path.dirname(os.path.abspath(__file__))
             key_path = os.path.join(curr_path, "../../../../keys")
             with open("{}/{}".format(
-                  key_path, cfg_xnfs_gen.get("key"))) as fhandle:
+                  key_path, cfg_xnfs_gen.get("ssh-key"))) as fhandle:
                 self.xnf_key = fhandle.read()
         except Exception as e:
             raise osm_exception.OSMXNFKeyNotFound(e)

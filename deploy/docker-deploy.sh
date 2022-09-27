@@ -31,8 +31,9 @@ MODULE_SKIP=0
 
 DOCKER_NETWORK_DB="so-db"
 DOCKER_NETWORK_CORE="so-core"
-DOCKER_VOLUME_DB="so-db"
-DOCKER_VOLUME_MON="so-mon"
+# Using namespace for docker-compose
+DOCKER_VOLUME_DB="dbl_so-db"
+DOCKER_VOLUME_MON="mon_so-mon"
 
 source deploy-vars.sh
 source deploy-opts.sh
