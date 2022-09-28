@@ -18,19 +18,20 @@ class ExecuteCommand:
 
     def execute_command(xnf_ip, command) -> str:
         parser = FullConfParser()
-        mon = parser.get("mon.yaml")
-        prom = mon.get("prometheus")
-        user_name = prom.get("user-name")
+        cfg_mon = parser.get("mon.yaml")
+        cfg_mon_prom = cfg_mon.get("prometheus")
+        cfg_mon_user_name = cfg_mon_prom.get("user-name")
         xnf_ip = xnf_ip
-        # FIXME hist is hardcoded! It must be read from cfg/so.yaml
-        # Check logic/common/src/nfv/nfvo/osm/osm.py, line 132; for an example
-        key_filename = os.path.abspath("keys/network_function")
+        cfg_so = parser.get("so.yaml")
+        cfg_so_xnfs = cfg_so.get("xnfs")
+        cfg_ssh = cfg_so_xnfs.get("general", {}).get("ssh-key")
+        key_filename = "keys/{}".format(cfg_ssh)
         command = command
 
         try:
             client = paramiko.SSHClient()
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(xnf_ip, username=user_name,
+            client.connect(xnf_ip, username=cfg_mon_user_name,
                            key_filename=key_filename)
             STDIN, STDOUT, STDERR = client.exec_command(command)
             time.sleep(1)
