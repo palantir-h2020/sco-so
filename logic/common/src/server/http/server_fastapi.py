@@ -6,7 +6,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")))
-from common.config.parser.fullparser import FullConfParser
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.server.http.server_cfg import ServerConfig
 from fastapi import FastAPI
 from fastapi.routing import APIRouter
@@ -59,16 +59,7 @@ class Server:
         self.__load__blueprint_modules()
         self.settings = Settings()
         # self.app = ExternalAPI(self.settings)
-        self.config = FullConfParser()
-        self.api_cat_category = self.config.get("api.categories.yaml")
-        self.cat_category = self.api_cat_category.get("categories")
-        self.api_categories = {}
-        for cat_name, cat_cfg in self.cat_category.items():
-            cat_dict = {
-                "name": cat_name
-            }
-            cat_dict.update(cat_cfg)
-            self.api_categories[cat_name] = cat_dict
+        self.api_categories = ModuleCatalogue().modules()
 
     def __load__blueprint_modules(self):
         # TODO: integrate with behaviour in server.py (move all to FastAPI)

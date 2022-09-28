@@ -82,8 +82,8 @@ class OSM():
         self._create_ep_osm()
         self._create_session()
         # Get ports for services
-        self.api_cat_category = self.config.get("api.categories.yaml")
-        self.api_cat_section = self.api_cat_category.get("categories")
+        self.catalogue_modules = self.config.get("modules.yaml")
+        self.catalogue_module = self.catalogue_modules.get("modules")
         self.timings_section = self.nfvo_category.get("timings")
         self._read_cfg_timings(self.timings_section)
         self._read_cfg_xnfs(self.nfvo_category.get("xnfs"))
@@ -206,7 +206,7 @@ class OSM():
     def notify_message_broker_ae(self, nsi_id):
         infra_url = "http://{}:{}/mon/infra/service?id={}".format(
                     "so-mon",
-                    self.api_cat_section.get("mon").get("port"),
+                    self.catalogue_module.get("mon").get("port"),
                     nsi_id)
         response = requests.get(infra_url, verify=False)
         infra_data = response.json()

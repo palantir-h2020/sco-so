@@ -54,3 +54,26 @@ def infra_service_list(request: Request, infra_id: Optional[str] = None,
         if id is not None:
             requests_ep = "{}?id={}".format(requests_ep, id)
     return requests.get(requests_ep)
+
+
+# TODO: call new MON methods from here
+
+@router.get(SOEndpoints.TARGETS, status_code=HttpCode.OK)
+@exception.handle_exc_resp
+def prometheus_targets_list(request: Request):
+    """
+    List of Prometheus targets.
+    """
+    requests_ep = "{}/targets".format(ep_base)
+    return requests.get(requests_ep)
+
+
+@router.get(SOEndpoints.TARGETS_METRICS, status_code=HttpCode.OK)
+@exception.handle_exc_resp
+def prometheus_targets_metrics(request: Request):
+    """
+    Metrics for monitored targets, providing values for both
+    generic (Prometheus) and custom (explicitly registered) metrics
+    """
+    requests_ep = "{}/targets/metrics".format(ep_base)
+    return requests.get(requests_ep)

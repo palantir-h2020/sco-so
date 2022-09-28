@@ -1,4 +1,12 @@
-categories:
+modules:
+  api:
+    title: "API"
+    description: "API exposed to external clients"
+    port: 50101
+  dbl:
+    title: "Database layer"
+    description: "Database service"
+    port: 50104
   lcm:
     title: "Life-cycle management"
     description: "Life-cycle operations on services, including their instantiation"
@@ -11,3 +19,7 @@ categories:
     title: "Packages"
     description: "Handling of packages, prior to their instantiation as services"
     port: 50107
+  pol:
+    title: "Alerts"
+    description: "Management of alerts related to metrics"
+    port: 50108

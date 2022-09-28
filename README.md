@@ -62,8 +62,8 @@ The SCO/SO used in PALANTIR is a Security Orchestrator that consists of differen
 | api          | 50101 | [docs](logic/modules/api/README.md) |  WIP   |
 | atr          | 50102 | [docs](logic/modules/atr/README.md) |  TBD   |
 | cfg          | 50103 | [docs](logic/modules/cfg/README.md) |  TBD   |
-| dbl          | 50104 | N/A |  WIP   |
+| dbl          | 50104 | N/A                                 |  WIP   |
 | lcm          | 50105 | [docs](logic/modules/lcm/README.md) |  WIP   |
 | mon          | 50106 | [docs](logic/modules/mon/README.md) |  WIP   |
 | pkg          | 50107 | [docs](logic/modules/pkg/README.md) |  WIP   |
-| pol          | 50108 | [docs](logic/modules/pol/README.md) |  TBD   |
+| pol          | 50108 | [docs](logic/modules/pol/README.md) |  WIP   |

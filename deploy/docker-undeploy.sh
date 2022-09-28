@@ -37,11 +37,23 @@ function setup_env_vars() {
     module="$1"
     modl_base=$(basename $module)
     modl_deploy_path=${module}/deploy/docker
-    echo "Reading env vars..."
+    if [[ $(basename ${PWD}) == "deploy" ]] && [[ -d "common" ]] && [[ -L cfg ]]; then
+        echo "Reading env vars..."
+    else
+        error_msg="Cannot read env vars (due to a possible inconsistent status at /deploy or ${modl_base}/deploy\n"
+	error_msg+="Attempting forced cleaning... However, check if the container was removed"
+	text_error "${error_msg}"
+	return
+    fi
     # fetch_env_vars "${module}/deploy/env"
-    if [[ ! -f "${module}/deploy/env" ]]; then
-        error_msg="No environment variables found for module \"${modl_base}\"\n"
-        error_msg+="Missing file: $(realpath ${module}/deploy/env)"
+    # DEPRECATED: no longer using ${module}/deploy/env files
+    # env_file=${module}/deploy/env
+    env_file="${PWD}/../cfg/modules.yaml"
+    deployed_module_dockerfile="${module}/deploy/docker/${docker_file}"
+
+    if [[ ! -f "${env_file}" ]]; then
+        error_msg="No deployment files found for module: \"${modl_base}\"\n"
+        error_msg+="Missing file (among others): $(realpath ${deployed_module_dockerfile})"
         # If no specific module is provided (via $MODULE), attempt all available modules to deploy
         if [[ -z $MODULE ]]; then
             text_error "${error_msg}. Skipping current module"
@@ -53,7 +65,25 @@ function setup_env_vars() {
             error_exit "${error_msg}"
         fi
     else
-        fetch_env_vars "${module}/deploy/env"
+        fetch_env_vars "${env_file}"
+        fetch_env_vars_names
+        # Export env vars so that envsubst can do its magic (replace_vars function)
+        for env_var in "${ENV_VARS[@]}"; do
+            export ${env_var}
+        done
+    fi
+}
+
+function remove_env_vars_setup() {
+    # Clean symlinks necessary for reading the env vars
+    if [[ $(basename ${PWD}) == "deploy" ]]; then
+        ln_dir="common"
+        if [[ -d ${ln_dir} ]]; then
+            rm -rf ${ln_dir}
+        fi
+        if [[ -L cfg ]]; then
+            rm cfg
+        fi
     fi
 }
 
@@ -68,7 +98,7 @@ function setup_modl_undeploy_folder() {
     fi
     if [ $MODULE_SKIP -eq 0 ]; then
         cd ${modl_deploy_path}
-        ./${undeploy_script} || true
+        ./${undeploy_script} ${module} || true
         cd $current
     fi
 }
@@ -96,6 +126,8 @@ function undeploy_modules() {
 	    fi
         fi
     done
+    # This is a general setup, not just per module. Maybe it is best to keep it
+    # remove_env_vars_setup
 }
 
 undeploy_modules

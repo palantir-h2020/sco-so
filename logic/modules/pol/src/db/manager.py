@@ -7,6 +7,7 @@
 
 from bson import json_util
 from bson.objectid import ObjectId
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.config.parser.fullparser import FullConfParser
 from common.core.log import setup_custom_logger
 from common.db.models.auth.auth import PasswordAuth, KeyAuth
@@ -31,16 +32,17 @@ LOGGER = setup_custom_logger(__name__)
 class DBManager():
     """
     Wrapper for MongoClient to communicate to the shared mongo database
-mongo-db
+    mongo-db
     """
 
     def __init__(self):
         self.__mutex = threading.Lock()
+        self.module_catalogue = ModuleCatalogue().modules()
+        self.host = "so-dbl"
+        self.port = int(self.module_catalogue.get("dbl", {}).get("port"))
         self.config = FullConfParser()
         self.db_category = self.config.get("db.yaml")
         self.db_general = self.db_category.get("general")
-        self.host = self.db_general.get("host")
-        self.port = int(self.db_general.get("port"))
         self.db_db = self.db_category.get("db")
         self.db_name = self.db_db.get("name")
         self.user_id = self.db_db.get("user")

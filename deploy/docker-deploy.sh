@@ -32,7 +32,7 @@ MODULE_SKIP=0
 DOCKER_NETWORK_DB="so-db"
 DOCKER_NETWORK_CORE="so-core"
 # Using namespace for docker-compose
-DOCKER_VOLUME_DB="dbl_so-db"
+DOCKER_VOLUME_DB="dbl_so-dbl"
 DOCKER_VOLUME_MON="mon_so-mon"
 
 source deploy-vars.sh
@@ -134,10 +134,13 @@ function copy_replace_files() {
     module="$1"
     modl_base=$(basename $module)
     modl_deploy_path=${module}/deploy/docker
+    # DEPRECATED: no longer using ${module}/deploy/env files
+    # env_file=${module}/deploy/env
+    env_file="${PWD}/../cfg/modules.yaml"
 
-    if [[ ! -f "${module}/deploy/env" ]]; then
-        error_msg="No environment variables found for module: \"${modl_base}\"\n"
-        error_msg+="Missing file: $(realpath ${module}/deploy/env)"
+    if [[ ! -f "${env_file}" ]]; then
+        error_msg="No environment variables found with component's information\n"
+        error_msg+="Missing file: $(realpath ${env_file})"
         # If no specific module is provided (via $MODULE), attempt all available modules to deploy
         if [[ -z $MODULE ]]; then
             text_error "${error_msg}. Skipping current module"
@@ -155,10 +158,11 @@ function copy_replace_files() {
         #    error_exit "${error_msg}"
         #fi
     else
+        # DEPRECATED: no longer using ${module}/deploy/env files
         # Reuse the general env file for the Docker environment
-        cp -Rp ${module}/deploy/env ${modl_deploy_path}/.env
+        #cp -Rp ${env_file} ${modl_deploy_path}/.env
         echo "Reading env vars..."
-        fetch_env_vars "${module}/deploy/env"
+        fetch_env_vars "${env_file}"
         fetch_env_vars_names
         # Export env vars so that envsubst can do its magic (replace_vars function)
         for env_var in "${ENV_VARS[@]}"; do

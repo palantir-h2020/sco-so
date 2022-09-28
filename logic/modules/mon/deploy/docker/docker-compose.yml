@@ -65,4 +65,4 @@ networks:
     driver: bridge
     external: true
 volumes:
-  so-mon:
+    so-mon:

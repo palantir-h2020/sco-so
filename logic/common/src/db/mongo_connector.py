@@ -4,6 +4,7 @@
 # Copyright 2021-present i2CAT
 # All rights reserved
 
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.config.parser.fullparser import FullConfParser
 from mongoengine import disconnect
 # from mongoengine import connect, disconnect
@@ -17,11 +18,12 @@ class MongoConnector():
 
     def __init__(self):
         # self.__mutex = threading.Lock()
+        self.module_catalogue = ModuleCatalogue().modules()
+        self.host = "so-dbl"
+        self.port = int(self.module_catalogue.get("dbl", {}).get("port"))
         self.config = FullConfParser()
         self.db_category = self.config.get("db.yaml")
         self.db_general = self.db_category.get("general")
-        self.host = self.db_general.get("host")
-        self.port = int(self.db_general.get("port"))
         self.db_db = self.db_category.get("db")
         self.db_name = self.db_db.get("name")
         self.db_user = self.db_db.get("user")

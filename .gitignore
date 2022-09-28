@@ -21,6 +21,10 @@ keys/*
 !deploy/kubernetes/*.yaml*
 !deploy/kubernetes/*.sh*
 
+# Ignore symlink files used to read the env vars with the ModuleCatalogue class
+deploy/cfg
+deploy/common/*
+
 # General
 __pycache__
 *.pyc

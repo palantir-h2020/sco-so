@@ -7,7 +7,7 @@
 
 from blueprints.schemas.lcm_ns import NSInstanceAction, \
         NSInstanceDeployment
-from common.config.api.api_categories import APICategories
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.exception import exception
 from common.server.http.http_code import HttpCode
 from common.server.endpoints import SOEndpoints
@@ -18,7 +18,7 @@ import requests
 
 
 router = APIRouter()
-api_c = APICategories().categories()
+api_c = ModuleCatalogue().modules()
 ep_base = "http://so-{0}:{1}/{0}".format(
         "lcm", api_c.get("lcm", {}).get("port", ""))
 

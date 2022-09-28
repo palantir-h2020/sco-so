@@ -5,10 +5,17 @@
 # Licensed under ???
 
 
+MODULE=$1
+
 # Undeployment
-if [[ -f ${docker_compose} ]]; then
+if [[ -f ${docker_compose} ]] && [[ ! -z ${SO_MODL_NAME} ]]; then
+    # Env vars can be used for the docker-compose.yaml file
     docker-compose -p ${SO_MODL_NAME} ps
     docker-compose -p ${SO_MODL_NAME} down
+else
+    # Otherwise, just attempt forceful removal
+    modl_base=$(basename ${MODULE})
+    docker rm -f "so-${modl_base}"
 fi
 
 # Remove utils-related dependencies and sources

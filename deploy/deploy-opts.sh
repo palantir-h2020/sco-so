@@ -99,17 +99,31 @@ function fetch_env_vars() {
     DEPLOY_ENV_VARS=$1
     [[ ! -f $DEPLOY_ENV_VARS ]] && error_exit "File with environment variables ($DEPLOY_ENV_VARS) not found"
 
+    # DEPRECATED: no longer using ${MODULE}/deploy/env files
     # Read only export non-commented and "key=value"-like lines
-    while IFS="=" read -r key value; do
-        if ! [[ -z $key ]] && ! [[ -z $value ]] && ! [[ "$key" =~ ^#.*$ ]]; then
-            # Remove leading and trailing whitespacess on value
-            value="${value#"${value%%[![:space:]]*}"}"
-            value="${value%"${value##*[![:space:]]}"}"
-            line="${key}=${value}"
-            export "$line"
-            ENV_VARS+=("$line")
-        fi
-    done < "$DEPLOY_ENV_VARS"
+    # while IFS="=" read -r key value; do
+    #     if ! [[ -z $key ]] && ! [[ -z $value ]] && ! [[ "$key" =~ ^#.*$ ]]; then
+    #         # Remove leading and trailing whitespacess on value
+    #         value="${value#"${value%%[![:space:]]*}"}"
+    #         value="${value%"${value##*[![:space:]]}"}"
+    #         line="${key}=${value}"
+    #         export "$line"
+    #         ENV_VARS+=("$line")
+    #     fi
+    # done < "$DEPLOY_ENV_VARS"
+
+    # Create symlinks necessary for reading the env vars
+    ln_dir="common"
+    if [[ $(basename ${PWD}) == "deploy" ]]; then
+	[[ ! -L ${PWD}/cfg ]] && ln -s ../cfg ${PWD}/cfg
+        mkdir -p ${ln_dir}
+	[[ ! -L ${PWD}/${ln_dir}/config ]] && ln -s ${PWD}/../logic/common/src/config ${ln_dir}
+	[[ ! -L ${PWD}/${ln_dir}/exception ]] && ln -s ${PWD}/../logic/common/src/exception ${ln_dir}
+	[[ ! -L ${PWD}/${ln_dir}/server ]] &&  ln -s ${PWD}/../logic/common/src/server ${ln_dir}
+	[[ ! -L ${PWD}/${ln_dir}/utils ]] && ln -s ${PWD}/../logic/common/src/utils ${ln_dir}
+    fi
+    # Fetch container names and ports from cfg/modules.yaml
+    ENV_VARS+=($(python3 deploy_opts.py ${MODULE}))
 
     # Add specific environment variables (related to paths, for proper replacement in files)
     ENV_VARS+=("DEPLOY_DIR=${DEPLOY_DIR}")
