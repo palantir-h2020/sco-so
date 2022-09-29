@@ -32,6 +32,7 @@ MODULE_SKIP=0
 DOCKER_NETWORK_DB="so-db"
 DOCKER_NETWORK_CORE="so-core"
 # Using namespace for docker-compose
+DOCKER_VOLUME_AAC_DB="aac_so-aac-db"
 DOCKER_VOLUME_DB="dbl_so-dbl"
 DOCKER_VOLUME_MON="mon_so-mon"
 
@@ -121,7 +122,8 @@ function docker_create_networks() {
 }
 
 function docker_create_volumes() {
-    declare -a docker_preexisting_volumes=("${DOCKER_VOLUME_DB}" "${DOCKER_VOLUME_MON}")
+    declare -a docker_preexisting_volumes=("${DOCKER_VOLUME_AAC_DB}" "${DOCKER_VOLUME_DB}")
+    docker_preexisting_volumes+=("${DOCKER_VOLUME_MON}")
     for docker_volume in "${docker_preexisting_volumes[@]}"; do
         if [ ! "$(docker volume ls | grep ${docker_volume})" ]; then
             echo "Creating Docker volume \"${docker_volume}\""

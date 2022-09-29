@@ -18,9 +18,9 @@ import requests
 
 
 router = APIRouter()
-api_c = ModuleCatalogue().modules()
+mod_c = ModuleCatalogue().modules()
 ep_base = "http://so-{0}:{1}/{0}".format(
-        "lcm", api_c.get("lcm", {}).get("port", ""))
+        "lcm", mod_c.get("lcm", {}).get("port", ""))
 
 
 # TODO: enforce returned models

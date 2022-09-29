@@ -7,7 +7,7 @@
 
 # from blueprints.schemas.mon_infra import \
 #      MonitoringInfrastructure as MonInfraSchema
-from common.config.api.api_categories import APICategories
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.exception import exception
 from common.server.endpoints import SOEndpoints
 from common.server.http.http_code import HttpCode
@@ -19,9 +19,9 @@ import requests
 
 
 router = APIRouter()
-api_c = APICategories().categories()
+mod_c = ModuleCatalogue().modules()
 ep_base = "http://so-{0}:{1}/{0}".format(
-        "pkg", api_c.get("pkg", {}).get("port", ""))
+        "pkg", mod_c.get("pkg", {}).get("port", ""))
 
 
 # TODO: enforce returned models
@@ -51,13 +51,23 @@ def xnf_pkg_list(request: Request, id: Optional[str] = None,
 @router.post(SOEndpoints.XNF, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def xnf_pkg_onboard(request: Request,
-                    package: UploadFile = File(
-                        ..., description="xNF in a .tar.gz")) -> HttpResponse:
+                    # TODO: uncomment
+                    # package: UploadFile = File(
+                    # ..., description="xNF in a .tar.gz")) -> HttpResponse:
+                    # TODO: remove
+                    package: Optional[UploadFile] = File(
+                        None, description="xNF in a .tar.gz")) -> HttpResponse:
     """
     Uploads an xNF package as a .tar.gz file.
     """
     requests_ep = "{}/xnf".format(ep_base)
-    file_data = {"file": package.file.read()}
+    # TODO: uncomment
+    # file_data = {"file": package.file.read()}
+    # TODO: remove
+    if package is not None and package.file is not None:
+        file_data = {"file": package.file.read()}
+    else:
+        file_data = None
     return requests.post(requests_ep, files=file_data)
 
 
@@ -91,13 +101,23 @@ def ns_pkg_list(request: Request, id: Optional[str] = None,
 @router.post(SOEndpoints.NS, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def ns_pkg_onboard(request: Request,
-                   package: UploadFile = File(
-                        ..., description="NS in a .tar.gz")) -> HttpResponse:
+                   # TODO: uncomment
+                   # package: UploadFile = File(
+                   # ..., description="NS in a .tar.gz")) -> HttpResponse:
+                   # TODO: remove
+                   package: Optional[UploadFile] = File(
+                        None, description="NS in a .tar.gz")) -> HttpResponse:
     """
     Uploads a NS package as a .tar.gz file.
     """
     requests_ep = "{}/ns".format(ep_base)
-    file_data = {"file": package.file.read()}
+    # TODO: uncomment
+    # file_data = {"file": package.file.read()}
+    # TODO: remove
+    if package is not None and package.file is not None:
+        file_data = {"file": package.file.read()}
+    else:
+        file_data = None
     return requests.post(requests_ep, files=file_data)
 
 

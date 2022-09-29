@@ -1,4 +1,8 @@
 modules:
+  aac:
+    title: "AAC"
+    description: "Authentication and Authorisation Control"
+    port: 50100
   api:
     title: "API"
     description: "API exposed to external clients"

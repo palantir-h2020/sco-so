@@ -7,7 +7,7 @@
 
 from blueprints.schemas.mon_infra import \
      MonitoringInfrastructure as MonInfraSchema
-from common.config.api.api_categories import APICategories
+from common.config.modules.module_catalogue import ModuleCatalogue
 from common.exception import exception
 from common.server.endpoints import SOEndpoints
 from common.server.http.http_code import HttpCode
@@ -17,9 +17,9 @@ import requests
 
 
 router = APIRouter()
-api_c = APICategories().categories()
+mod_c = ModuleCatalogue().modules()
 ep_base = "http://so-{0}:{1}/{0}".format(
-        "mon", api_c.get("mon", {}).get("port", ""))
+        "mon", mod_c.get("mon", {}).get("port", ""))
 
 
 # When response_model is set, pydantic is enforced. However, enforcing

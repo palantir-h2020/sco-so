@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  so_aac_keycloak_db:
+    image: postgres:14.5
+    container_name: so-${SO_MODL_NAME}-keycloak-db
+    restart: unless-stopped
+    volumes:
+      - so-aac-db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=${SO_MODL_AUTH_DB_USER}
+      - POSTGRES_PASSWORD=${SO_MODL_AUTH_DB_USERPASSWORD}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - so-db
+  so_aac_keycloak:
+    image: quay.io/keycloak/keycloak:19.0.2
+    #image: quay.io/keycloak/keycloak:legacy
+    container_name: so-${SO_MODL_NAME}-keycloak
+    hostname: keycloak
+    restart: unless-stopped
+    # Test (19.0.2)
+    #command: start --optimized --hostname keycloak
+    # https://keycloak.discourse.group/t/cant-login-to-keycloak/3142
+    # https://github.com/keycloak/keycloak-containers/blob/main/docker-compose-examples/keycloak-postgres.yml
+    # Working - dev, not final (19.0.2)
+    command: start-dev
+    environment:
+      - SO_MODL_NAME
+      - SO_MODL_API_PORT
+      # 19.0.2
+      - KEYCLOAK_ADMIN=${SO_MODL_AUTH_ADMIN_USER}
+      - KEYCLOAK_ADMIN_PASSWORD=${SO_MODL_AUTH_ADMIN_USERPASSWORD}
+      - DB_VENDOR=POSTGRES
+      - DB_ADDR=so-${SO_MODL_NAME}-keycloak-db
+      - DB_DATABASE=keycloak
+      - DB_SCHEMA=public
+      - DB_USER=${SO_MODL_AUTH_DB_USER}
+      - DB_PASSWORD=${SO_MODL_AUTH_DB_USERPASSWORD}
+      # Legacy
+      #- KEYCLOAK_USER=${SO_MODL_AUTH_USER}
+      #- KEYCLOAK_PASSWORD=${SO_MODL_AUTH_USERPASSWORD}
+      - PROXY_ADDRESS_FORWARDING=false
+    ports:
+      - "8080:8080"
+    depends_on:
+      - so_aac_keycloak_db
+    healthcheck:
+      test: curl -f http://so-${SO_MODL_NAME}-keycloak:8080/
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - so-db
+      - so-core
+
+networks:
+  so-db:
+    driver: bridge
+    external: true
+  so-core:
+    driver: bridge
+    external: true
+
+volumes:
+  so-aac-db:
+    driver: local

@@ -18,6 +18,8 @@ services:
     ports:
       # Bind and expose the server port to the one defined in the .env file
       - "${SO_MODL_API_PORT}:${SO_MODL_API_PORT}"
+    depends_on:
+      - so_mon_prometheus
     volumes:
       - so-mon:/share
       # The API in so-mon must be able to modify this file
@@ -65,4 +67,4 @@ networks:
     driver: bridge
     external: true
 volumes:
-    so-mon:
+  so-mon:

@@ -1,0 +1,10 @@
+db:
+  user: so
+  password: keycloak
+keycloak:
+  # Do not use "keycloak" as password
+  # FIXME: do not change password at the moment
+  user: admin
+  password: Pa55w0rd
+  admin-user: admin
+  admin-password: Pa55w0rd

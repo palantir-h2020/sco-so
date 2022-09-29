@@ -23,7 +23,13 @@ def list_pkg_ns():
 @so_blueprints.route(SOEndpoints.PKG_NS, methods=["POST"])
 @exception.handle_exc_resp
 def upload_pkg_ns():
-    _pkg_file = request.files["file"]
+    ## TODO: uncomment
+    # _pkg_file = request.files.get("file")
+    ## TODO: remove
+    if request is not None and request.files is not None:
+        _pkg_file = request.files.get("file")
+    else:
+        _pkg_file = None
     ns_obj = OSMInterfaceNS()
     return ns_obj.onboard_package(_pkg_file)
 

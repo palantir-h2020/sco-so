@@ -107,6 +107,7 @@ function setup_modl_undeploy_folder() {
 function undeploy_modules() {
     # $MODULE: module name passed by parameter
     # $module: module name iterated from all modules
+    MODULE_FOUND=0
     for module in ${PWD}/../logic/modules/*; do
         modl_base=$(basename $module)
         modl_cont="so-${modl_base}"
@@ -115,7 +116,7 @@ function undeploy_modules() {
                 title_info "Undeploying module \"${modl_base}\""
 		running_container=$(docker ps -a | grep ${modl_cont})
                 if [ ! "${running_container}" ]; then
-                    text_warning "Module \"${modl_base}\" not deployed"
+                    text_warning "Module \"${modl_base}\" is not currently deployed"
 		fi
                 if [[ "${running_container}" || ${FORCE} == "true" ]]; then
                     setup_env_vars "${module}"
@@ -123,9 +124,13 @@ function undeploy_modules() {
                 fi
                 # Reset the flag that indicates a module should be skipped
                 MODULE_SKIP=0
+                MODULE_FOUND=1
 	    fi
-        fi
+	fi
     done
+    if [[ ${MODULE_FOUND} -eq 0 ]]; then
+        text_warning "Module \"${MODULE}\" was not found"
+    fi
     # This is a general setup, not just per module. Maybe it is best to keep it
     # remove_env_vars_setup
 }

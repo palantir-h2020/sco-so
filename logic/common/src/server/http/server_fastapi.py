@@ -59,7 +59,7 @@ class Server:
         self.__load__blueprint_modules()
         self.settings = Settings()
         # self.app = ExternalAPI(self.settings)
-        self.api_categories = ModuleCatalogue().modules()
+        self.module_catalogue = ModuleCatalogue().modules()
 
     def __load__blueprint_modules(self):
         # TODO: integrate with behaviour in server.py (move all to FastAPI)
@@ -110,7 +110,7 @@ class Server:
                                 # app.include_router(obj, tags=["API"])
                                 pass
                             else:
-                                mod_title = self.api_categories.get(
+                                mod_title = self.module_catalogue.get(
                                         mod_type, mod_type)
                                 if isinstance(mod_title, dict):
                                     mod_title = mod_title.get("title", "")
