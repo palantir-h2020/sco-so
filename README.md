@@ -8,20 +8,31 @@ The SO subcomponent takes care of the onboarding of the Network Security Functio
 
 All dependencies will be installed with the deployment scripts.
 
-Regarding configuration:
-- Before deployment you must Verify and adjust your custom configuration in all sample files under the ./cfg folder. To do so, first copy the ".yaml.sample" file into a ".yaml" file; then fill in with the proper data for your environment.
-- There are some modules that may require extra configuration under their specific folder, i.e., under ./logic/module/<module>/cfg
+Before deployment, please check the following.
 
-Regarding the infrastructure:
+### Configuration
+- Verify and adjust your custom configuration in all sample files under `./cfg`.
+  - Copy first each ".yaml.sample" file into a ".yaml" file; then fill in with the proper data for your environment.
+- Check module-specific configuration under their folder, i.e. under `./logic/module/<module>/cfg`.
+
+### Infrastructure
 
 - A Docker registry can be optionally provided in the infrastructure.
-  - If provided, this should go by the name of `docker-registry` and port `30010`. Each node in the Kubernetes cluster should point to this instance in the "/etc/hosts" file, so that it is accessible across the cluster.
+  - In this case:
+    - Use name=`docker-registry` and port=`30010`.
+    - Each node in the Kubernetes cluster should point to this instance in the `/etc/hosts` file, so that it is accessible across the cluster.
   - Otherwise, it is expected that all Kubernetes nodes from the cluster can access any other node via SSH, so that SCO/SO can configure it.
-- All Kubernetes nodes must be:
-  - Accessible from each other using private key. The public key should be under ~/.ssh and it should be authorised in other nodes.
-  - The user should be added to the Docker group OR have administration privileges without inputting a password.
+- All Kubernetes nodes must be accessible from each other using private key. The public key should be under ~/.ssh and it should be authorised in other nodes.
+- The user should be added to the Docker group OR have administration privileges without inputting a password.
 
 # Deployment
+
+## Production env (Docker)
+
+```
+cd deploy
+./docker-deploy.sh -s <module>
+```
 
 ## Development env (venv)
 
@@ -36,17 +47,9 @@ source deploy.sh
 ./venv-deploy.sh -s <module>
 ```
 
-## Production env (Docker)
-
-NB: this is WIP for some modules
-```
-cd deploy
-./docker-deploy.sh -s <module>
-```
-
 ## Production env (Kubernetes)
 
-NB: this is TODO work
+NB: not yet supported. Future work
 ```
 cd deploy
 ./kubernetes-deploy.sh -s <module>
@@ -58,7 +61,7 @@ The SCO/SO used in PALANTIR is a Security Orchestrator that consists of differen
 
 | Module |  Port | Docs | Status |
 |:------------:|:-----:|:--------:|:------:|
-| aac          | 50100 | [docs](logic/modules/aac/README.md) |  TBD   |
+| aac          | 50100 | [docs](logic/modules/aac/README.md) |  WIP   |
 | api          | 50101 | [docs](logic/modules/api/README.md) |  WIP   |
 | atr          | 50102 | [docs](logic/modules/atr/README.md) |  TBD   |
 | cfg          | 50103 | [docs](logic/modules/cfg/README.md) |  TBD   |
