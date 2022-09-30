@@ -56,15 +56,19 @@ def delete_ns():
 @so_blueprints.route(SOEndpoints.LCM_NS_ACT, methods=["GET"])
 @exception.handle_exc_resp
 def fetch_actions_on_ns():
-    _id = request.args.get("id")
+    _ns_id = request.args.get("ns-id")
+    _action_id = request.args.get("action-id")
     ns_obj = OSMInterfaceNS()
-    return ns_obj.fetch_actions_in_ns(_id)
+    return ns_obj.fetch_actions_in_ns(_ns_id, _action_id)
 
 
 @so_blueprints.route(SOEndpoints.LCM_NS_ACT, methods=["POST"])
 @exception.handle_exc_resp
 def trigger_action_on_ns():
-    _id = request.args.get("id")
+    _ns_id = request.args.get("id")
+    _wait_for = None
+    if "wait-for" in request.args.keys():
+        _wait_for = request.args.get("wait-for")
     request_params = request.form.to_dict()
     try:
         request_params["ns-action-params"] = json.loads(
@@ -72,4 +76,12 @@ def trigger_action_on_ns():
     except Exception:
         pass
     ns_obj = OSMInterfaceNS()
-    return ns_obj.apply_action(_id, request_params)
+    return ns_obj.apply_action(_ns_id, request_params, _wait_for)
+
+
+@so_blueprints.route(SOEndpoints.LCM_NS_HLT, methods=["GET"])
+@exception.handle_exc_resp
+def fetch_healthcheck_for_ns():
+    _id = request.args.get("id")
+    ns_obj = OSMInterfaceNS()
+    return ns_obj.fetch_healthcheck_for_ns(_id)

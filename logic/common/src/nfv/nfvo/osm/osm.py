@@ -18,6 +18,8 @@
 from common.config.parser.fullparser import FullConfParser
 from common.events.kafka.producer import SOProducer
 from common.log.log import setup_custom_logger
+from common.messages.actions import ACTION_STATUS
+from common.schemas.lcm_ns import NSInstanceActionExecWaitForData
 from common.server.http.http_code import HttpCode
 from common.utils import download
 from common.utils.osm_response_parsing import OSMResponseParsing
@@ -41,6 +43,7 @@ import requests
 import shutil
 import tarfile
 import threading
+
 import urllib3
 
 
@@ -90,6 +93,7 @@ class OSM():
         # Definition of expected/target status upon operations
         self.deployment_expected_status = "running"
         self.deletion_expected_status = "terminated"
+        self.action_expected_status = "completed"
         self.force_deletion_expected_status = "failed"
         # self.osm_builtin_actions = ["initiate", "scale",
         #    "terminate", "update"]
@@ -232,6 +236,54 @@ class OSM():
         if infra_data is not None:
             self.notify_message_broker(self.events_topics_inst_ae,
                                        infra_data)
+
+    def notify(self, trigger_modes: str, event_msg: str, **kwargs):
+        """
+        Notify the successful execution of a given action
+        to all involved components
+        """
+        if self.events_active:
+            trigger_mode = trigger_modes[0]
+            xni_ip = kwargs.get("xni-ip")
+            nsi_id = kwargs.get("nsi-id")
+
+            if len(trigger_modes) == 1 and (
+                "deployment" in trigger_modes or
+                    "deletion" in trigger_modes):
+                # Notify Portal
+                t = threading.Thread(target=self.notify_message_broker_portal,
+                                     args=(trigger_mode,
+                                           event_msg,
+                                           xni_ip))
+                t.start()
+
+            if "deployment" in trigger_modes:
+                # Notify TAR/AE
+                # (in case of trigger_modes=["deployment"]
+                # or trigger_modes=["deployment", "action"]
+                # NB: the comma must be provided after the argument,
+                # otherwise it will somehow attempt to decompress
+                t = threading.Thread(target=self.notify_message_broker_ae,
+                                     args=(nsi_id,))
+                t.start()
+
+            if "action" in trigger_modes:
+                # Notify Portal
+                t = threading.Thread(target=self.notify_message_broker_portal,
+                                     args=("action",
+                                           event_msg,
+                                           xni_ip))
+                t.start()
+
+            if len(trigger_modes) == 1 and (
+                "onboarding" in trigger_modes or
+                    "deboarding" in trigger_modes):
+                # Notify Portal
+                t = threading.Thread(target=self.notify_message_broker_portal,
+                                     args=(trigger_mode,
+                                           event_msg,
+                                           []))
+                t.start()
 
     # Packages
 
@@ -376,7 +428,7 @@ class OSM():
 
     # Called externally
     @check_authorization
-    def upload_package(self, bin_file, url):
+    def upload_package(self, bin_file, url, pkg_type):
         # Note that using requests produces a 401 error
         # Instead, use the Python cURL implementation
         # and set proper flags
@@ -438,81 +490,83 @@ class OSM():
                      "status": http_code})
 
         pkg_id = output.get("id")
-        if self.events_active:
-            # Send notification to Portal
-            self.notify_message_broker_portal(
-                    "onboarding",
-                    "SC package with id={0} has been onboarded".
-                    format(pkg_id),
-                    [])
+        trigger_modes = ["onboarding"]
+        event_msg = "SC package with id={0} has been onboarded".\
+            format(pkg_id)
+        event_args = {"xni-ip": []}
+        self.notify(trigger_modes, event_msg, **event_args)
 
         return {
-            "id": pkg_id,
+            "{}-pkg-id".format(pkg_type): pkg_id,
             "status": HttpCode.ACCEPTED}
 
     def upload_xnfd_package(self, bin_file):
 
-        ## TODO: remove
+        # TODO: remove
         print("xnf bin_file={}".format(bin_file))
         error_upload = False
         pkg_name = "snort_cnf"
         try:
             if bin_file is None:
-                ### Hardcoded value, remember to have the package on the container and to have it updated
+                # Hardcoded value, remember to have the package on
+                # the container and to have it updated
                 pkg_path = "{}.tar.gz".format(pkg_name)
                 if os.path.isfile(pkg_path):
                     fp = open(pkg_path, "rb")
                     filename = os.path.basename(pkg_path)
                     mime = MimeTypes()
                     content_type = mime.guess_type(pkg_path)
-                    bin_file = FileStorage(fp, filename, "package", content_type)
+                    bin_file = FileStorage(
+                        fp, filename, "package", content_type)
                 else:
                     error_upload = True
         except Exception:
             error_upload = True
 
-        ## TODO: uncomment
-        ## Endpoint: "/xnfpkgm/v1/xnf_packages_content"
-        #return self.upload_package(bin_file, self.url_xnfd_detail)
+        # TODO: uncomment
+        # Endpoint: "/xnfpkgm/v1/xnf_packages_content"
+        # return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
         if error_upload:
             existing_xnfd = self.get_xnf_descriptor(pkg_name)
             existing_xnfd_id = existing_xnfd.get("_id")
             print("Package={} has ID={}".format(pkg_name, existing_xnfd_id))
-            return {"id": existing_xnfd_id}
+            return {"xnf-pkg-id": existing_xnfd_id}
         else:
-            return self.upload_package(bin_file, self.url_xnfd_detail)
+            return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
 
     def upload_nsd_package(self, bin_file):
 
-        ## TODO: remove
+        # TODO: remove
         print("nsd bin_file={}".format(bin_file))
         error_upload = False
         pkg_name = "snort_ns"
         try:
             if bin_file is None:
-                ### Hardcoded value, remember to have the package on the container and to have it updated
+                # Hardcoded value, remember to have the package on
+                # the container and to have it updated
                 pkg_path = "{}.tar.gz".format(pkg_name)
                 if os.path.isfile(pkg_path):
                     fp = open(pkg_path, "rb")
                     filename = os.path.basename(pkg_path)
                     mime = MimeTypes()
                     content_type = mime.guess_type(pkg_path)
-                    bin_file = FileStorage(fp, filename, "package", content_type)
+                    bin_file = FileStorage(
+                        fp, filename, "package", content_type)
                 else:
                     error_upload = True
         except Exception:
             error_upload = True
 
-        ## TODO: uncomment
-        ## Endpoint: "/nsd/v1/ns_descriptors_content"
-        #return self.upload_package(bin_file, self.url_nsd_detail)
+        # TODO: uncomment
+        # Endpoint: "/nsd/v1/ns_descriptors_content"
+        # return self.upload_package(bin_file, self.url_nsd_detail, "ns")
         if error_upload:
             existing_nsd = self.get_ns_descriptor(pkg_name)
             existing_nsd_id = existing_nsd.get("_id")
             print("Package={} has ID={}".format(pkg_name, existing_nsd_id))
-            return {"id": existing_nsd_id}
+            return {"ns-pkg-id": existing_nsd_id}
         else:
-            return self.upload_package(bin_file, self.url_nsd_detail)
+            return self.upload_package(bin_file, self.url_nsd_detail, "ns")
 
     def guess_descriptor_type(self, package_name):
         res = {}
@@ -609,15 +663,13 @@ class OSM():
                                    headers=self.headers,
                                    verify=False)
         if response.status_code >= 200 and response.status_code < 300:
-            if self.events_active:
-                # Send notification to Portal
-                self.notify_message_broker_portal(
-                        "deboarding",
-                        "SC package with id={0} has been deboarded".
-                        format(descriptor_id),
-                        [])
+            trigger_modes = ["deboarding"]
+            event_msg = "SC package with id={0} has been deboarded".\
+                format(descriptor_id)
+            event_args = {"xni-ip": []}
+            self.notify(trigger_modes, event_msg, **event_args)
             return {
-                "name": package_name, "id": descriptor_id,
+                "name": package_name, "pkg-id": descriptor_id,
                 "status": response.status_code}
         elif response.status_code == 409:
             parsed_error, status = OSMResponseParsing.parse_error_msg(response)
@@ -634,7 +686,7 @@ class OSM():
 
     # Called externally
     @check_authorization
-    def fetch_actions_data(self, nsi_id: str):
+    def fetch_actions_data(self, nsi_id: str, action_id: str = None):
         actions_ret = {"ns": nsi_id, "actions": []}
         url_nsi_details = "{}/?nsInstanceId={}".format(
                               self.url_nsi_action_detail, nsi_id)
@@ -651,7 +703,9 @@ class OSM():
             action_type = action.get("lcmOperationType")
             if action_type != "action":
                 action_type = "built-in ({})".format(action_type)
-            action_status = action.get("operationState").lower()
+            action_status = action.get("operationState")
+            if action_status is not None:
+                action_status = action_status.lower()
             action_exec_time = TimeHandling.ms_to_rfc3339(
                     action.get("startTime"))
             action_ret = {
@@ -659,57 +713,159 @@ class OSM():
                     "start-time": action_exec_time,
                     "type": action_type,
                     "params": action.get("operationParams"),
-                    "status": action_status
-                         }
+                    "status": action_status,
+                    "detailed-status": action.get("detailed-status"),
+            }
             if action_status == "failed":
                 action_ret.update({
                     "error": action.get("errorMessage")})
-            actions_ret_list.append(action_ret)
+            if action_id is not None:
+                if action_id == action_ret.get("id"):
+                    actions_ret_list = [action_ret]
+                    break
+            else:
+                actions_ret_list.append(action_ret)
         actions_ret.update({"actions": actions_ret_list})
         return {"status": HttpCode.OK, **actions_ret}
 
+    # TODO: REUSE CODE FROM SOMEWHERE
+    def monitor_ns_action(self, nsi_id: str, action_id: str,
+                          target_status=None):
+        timeout = self.timing_to_act
+        action_executed = False
+        while not action_executed:
+            try:
+                action = self.fetch_actions_data(nsi_id, action_id)
+            except osm_exception.OSMException:
+                LOGGER.info("No action found, aborting data fetching")
+                break
+            if timeout < 0:
+                LOGGER.info("Timeout reached, aborting thread")
+                break
+            if action is None:
+                LOGGER.info("No action found, aborting thread")
+                break
+            operational_status = action.get("actions", [None])[0].get("status")
+            if operational_status is not None:
+                operational_status = operational_status.lower()
+            LOGGER.debug("Operational status: {0} ...".format(
+                operational_status))
+            # When target is met and action has been executed...
+            if operational_status == self.action_expected_status:
+                action_executed = True
+            if not action_executed:
+                sleep(self.timing_interval)
+                timeout = timeout-self.timing_interval
+        return action_executed
+
     # Called externally
-    def apply_action(self, nsi_id, inst_md):
-        if "ns-action-name" not in inst_md.keys():
-            return
+    def apply_action(self, nsi_id, inst_md, wait_for=None, **kwargs):
+        if nsi_id is None:
+            raise osm_exception.OSMInstanceNotFound(
+                {"error": "NS instance (id: {}) was not found".format(
+                     nsi_id),
+                 "status": HttpCode.NOT_FOUND})
+
+        action_name = inst_md.get("ns-action-name")
+        if action_name is None:
+            raise osm_exception.OSMException(
+                {"error": "Missing action name",
+                 "status": HttpCode.PARTIAL_CONTENT})
+        # If no action params are provided, use empty ones by default
+        action_params = inst_md.get("ns-action-params", {})
+
+        # By default this is an asynchronous method
+        # But it can be configured otherwise, called by the client with
+        # the query param "wait-for" set to any of these values:
+        #   - (0) NONE: nothing to wait for, async method
+        #   - (1) ACTION_ID: just wait enough to get the action ID
+        #   - (1, 2) ACTION_OUTPUT: wait for action to finish and return output
+        wait_for_none = wait_for == NSInstanceActionExecWaitForData.none
+        wait_for_action_id = wait_for == \
+            NSInstanceActionExecWaitForData.action_id
+        wait_for_action_output = wait_for == \
+            NSInstanceActionExecWaitForData.action_output
+
         # Check whether NS instance exists
         nss = self.get_ns_instances(nsi_id)
-        if nss is None:
-            raise osm_exception.OSMResourceNotFound(
-                {"error": "NS with id={} does not exist"
-                  .format(nsi_id)})
+        if len(nss.get("ns")) == 0:
+            raise osm_exception.OSMInstanceNotFound(
+                {"error": "NS with id={} does not exist".format(nsi_id)})
+
         trigger_modes = ["action"]
         # If the NS instance exists, trigger the action
-        target_status = None
-        output = {
-            "status": HttpCode.ACCEPTED, "id": nsi_id,
-            **inst_md
-        }
+        target_status = self.deployment_expected_status
         if self.deployment_expected_status in inst_md:
             target_status = inst_md.get("target_status")
         # Passing also current_app._get_current_object() (flask global context)
         LOGGER.debug("[DEBUG] Launching thread to monitor status " +
                      "prior to applying action")
-        t = threading.Thread(target=self.monitor_ns_deployment,
-                             args=(nsi_id,
-                                   inst_md.get("ns-action-name"),
-                                   inst_md.get("ns-action-params"),
-                                   trigger_modes,
-                                   current_app._get_current_object(),
-                                   target_status))
-        t.start()
+
+        if wait_for_none:
+            t = threading.Thread(target=self.monitor_ns_deployment_and_act,
+                                 args=(nsi_id,
+                                       action_name,
+                                       action_params,
+                                       trigger_modes,
+                                       current_app._get_current_object(),
+                                       target_status))
+            t.start()
+            # output = {
+            #     "status": HttpCode.ACCEPTED,
+            #     "id": nsi_id,
+            #     **inst_md
+            # }
+            output = dict(ACTION_STATUS)
+            output["ns-id"] = nsi_id
+            output["ns-action-name"] = action_name
+            output["ns-action-params"] = action_params
+            output["ns-action-status"] = "processing"
+            output["status"] = HttpCode.ACCEPTED
+        # (1) The first part is common whether waiting for the action
+        # ID or its full output
+        elif wait_for_action_id or wait_for_action_output:
+            ns_not_deployed = True
+            while ns_not_deployed:
+                ns_not_deployed = self.monitor_ns_deployment(
+                    nsi_id, current_app._get_current_object(),
+                    trigger_modes, target_status)
+            # Execute action only if any provided
+            action_name = inst_md.get("ns-action-name")
+            payload = {"action": action_name,
+                       "params": action_params}
+            # Execute the specific action at the NS instance
+            output = self.exec_action_on_ns(nsi_id, payload)
+
+        # (2) The second part requires monitoring whether the action
+        # has finished and retrieve its outcome
+        if wait_for_action_output:
+            # Get data from the submitted actions to pick the action-id
+            submitted_actions = self.fetch_actions_data(nsi_id)
+            # Actions seem to be ordered
+            action = submitted_actions.get("actions")[-1]
+            action_id = action.get("id")
+            action_name = action.get("params", {}).get("primitive")
+            self.monitor_ns_action(nsi_id, action_id)
+            # Get status for this particular action
+            submitted_action = self.fetch_actions_data(nsi_id, action_id)
+            submitted_action = submitted_action.get("actions")[0]
+            action_status = submitted_action.get("status")
+            action_det_status = submitted_action.get("detailed-status")
+            output.update({
+                "ns-action-status": action_status,
+                "ns-action-status-detailed": action_det_status,
+            })
         return output
 
-    def monitor_ns_deployment(self, nsi_id, action_name, action_params,
-                              trigger_modes, app, target_status=None):
+    def monitor_ns_deployment(self, nsi_id, app, trigger_modes,
+                              target_status=None):
         output = {"status": HttpCode.ACCEPTED}
         timeout = self.timing_to_inst
         ns_deployed = False
-        action_submitted = False
         nss = {}
+        if target_status is None:
+            target_status = self.deployment_expected_status
         while not ns_deployed:
-            sleep(self.timing_interval)
-            timeout = timeout-self.timing_interval
             try:
                 nss = self.get_ns_instances(nsi_id)
             except osm_exception.OSMException:
@@ -734,50 +890,50 @@ class OSM():
                 })
                 break
             # When target is met and NS instance is running...
-            if operational_status == self.deployment_expected_status:
+            if target_status == operational_status:
                 ns_deployed = True
+                break
+            if not ns_deployed:
+                sleep(self.timing_interval)
+                timeout = timeout-self.timing_interval
+        # Notify if finally deployed
+        if ns_deployed:
+            # Retrieve details on NS and xNF
+            nsi_details = self.get_ns_instance_details(nsi_id)
+            xni_ip = nsi_details.get("ip-infra")
+            # xni_id = nss.get("ns")[0].get("xnf").get("id")
+            # if isinstance(xni_id, list):
+            #     xni_id = xni_id[0]
+            # xni_data = self.get_xnf_instances(xni_id)
+            # xni_ip = xni_data.get("xnf")[0].get("ip")
+            event_msg = "SC with id={0} has been deployed".\
+                format(nsi_id)
+            event_args = {
+                "xni-ip": xni_ip,
+                "nsi-id": nsi_id,
+            }
+            self.notify(trigger_modes, event_msg, **event_args)
+        return ns_deployed
 
-                # Retrieve details on NS and xNF
-                nsi_details = self.get_ns_instance_details(nsi_id)
-                xni_ip = nsi_details.get("ip-infra")
-                # xni_id = nss.get("ns")[0].get("xnf").get("id")
-                # if isinstance(xni_id, list):
-                #     xni_id = xni_id[0]
-                # xni_data = self.get_xnf_instances(xni_id)
-                # xni_ip = xni_data.get("xnf")[0].get("ip")
-                if self.events_active:
-                    if "deployment" in trigger_modes:
-                        # Send notification to Portal
-                        self.notify_message_broker_portal(
-                                "deployment",
-                                "SC with id={} has been deployed".
-                                format(nsi_id),
-                                xni_ip)
-                    # Send notification to TAR/AE
-                    # (in case of trigger_modes=["deployment"]
-                    # or trigger_modes=["deployment", "action"]
-                    if ("deployment" in trigger_modes and
-                            "action" not in trigger_modes) or \
-                            ("deployment" in trigger_modes or
-                                "action" in trigger_modes):
-                        self.notify_message_broker_ae(nsi_id)
+    def monitor_ns_deployment_and_act(self, nsi_id, action_name,
+                                      action_params, trigger_modes, app,
+                                      target_status=None):
+        ns_deployed = False
+        while not ns_deployed:
+            ns_deployed = self.monitor_ns_deployment(
+                nsi_id, app, trigger_modes, target_status)
+        payload = {"action": action_name,
+                   "params": action_params}
+        # Execute the specific action at the NS instance
+        output = self.exec_action_on_ns(nsi_id, payload)
 
-                # Execute action only if any provided
-                if action_name is None:
-                    return action_submitted
-                payload = {"action": action_name,
-                           "params": action_params}
-                # Execute the specific action at the NS instance
-                output = self.exec_action_on_ns(nsi_id, payload)
-
-#                if action_name is not None:
-#                    app.mongo.store_xnf_action(xnf_instance,
-#                                               action_name,
-#                                               action_params,
-#                                               json.loads(output))
-                LOGGER.info(
-                    "Action performed and stored, exiting thread")
-                LOGGER.info(output)
+#        if action_name is not None:
+#            app.mongo.store_xnf_action(xnf_instance,
+#                                       action_name,
+#                                       action_params,
+#                                       json.loads(output))
+        LOGGER.info(
+            "Action performed and stored, exiting thread")
         return output
 
     @check_authorization
@@ -804,10 +960,6 @@ class OSM():
         ns_sshkeys = inst_md.get("ssh-keys")
         ns_action_name = inst_md.get("ns-action-name")
         ns_action_params = inst_md.get("ns-action-params")
-
-        trigger_modes = ["deployment"]
-        if ns_action_name is not None:
-            trigger_modes.append("action")
 
         nsi_data = {}
         if ns_pkg_id is not None:
@@ -854,8 +1006,12 @@ class OSM():
 
         nsr_id = response_data.get("id")
 
+        trigger_modes = ["deployment"]
+        if ns_action_name is not None:
+            trigger_modes.append("action")
+
         # Asynchronous behaviour
-        t = threading.Thread(target=self.monitor_ns_deployment,
+        t = threading.Thread(target=self.monitor_ns_deployment_and_act,
                              args=(nsr_id, ns_action_name, ns_action_params,
                                    trigger_modes,
                                    current_app._get_current_object(),
@@ -863,7 +1019,7 @@ class OSM():
         t.start()
         if status_code >= 200 and status_code < 400:
             success_msg = {"name": ns_name,
-                           "id": response_data.get("id"),
+                           "ns-id": response_data.get("id"),
                            "ns-pkg-id": ns_pkg_id,
                            "status": HttpCode.ACCEPTED}
             if nsi_data.get("nsDescription") is not None:
@@ -873,9 +1029,9 @@ class OSM():
             if nsi_data.get("ssh_keys") is not None:
                 success_msg["ssh-keys"] = nsi_data.get("ssh_keys")
             if ns_action_name is not None:
-                success_msg["action-name"] = ns_action_name
+                success_msg["ns-action-name"] = ns_action_name
             if ns_action_params is not None:
-                success_msg["action-params"] = ns_action_params
+                success_msg["ns-action-params"] = ns_action_params
             return success_msg
         else:
             error_msg = {"status": response_data.status.code,
@@ -889,11 +1045,12 @@ class OSM():
         t = threading.Thread(target=self.monitor_ns_deletion,
                              args=(nsr_id, force))
         t.start()
-        return {"id": nsr_id, "status": HttpCode.ACCEPTED}
+        return {"ns-id": nsr_id, "status": HttpCode.ACCEPTED}
 
     @check_authorization
     def monitor_ns_deletion(self, nsi_id, force=False):
         timeout = self.timing_to_del
+        ns_deleted = False
         inst_url = "{0}/{1}".format(self.url_nsi_list,
                                     nsi_id)
 
@@ -910,22 +1067,23 @@ class OSM():
                     nsi_id, status))
                 if status in [self.deletion_expected_status,
                               self.force_deletion_expected_status]:
+                    ns_deleted = True
                     LOGGER.info("NS with id={0} already in state={1}".format(
                         nsi_id, status))
-                    if self.events_active:
-                        # Send notification to Portal
-                        self.notify_message_broker_portal(
-                                "deletion",
-                                "SC with id={} has been deleted"
-                                .format(nsi_id),
-                                xni_ip)
+                    trigger_modes = ["deletion"]
+                    event_msg = "SC with id={0} has been deleted".\
+                        format(nsi_id)
+                    event_args = {"xni-ip": xni_ip}
+                    self.notify(trigger_modes, event_msg, **event_args)
                     break
             except Exception as e:
                 LOGGER.error("Cannot retrieve status for ns={0}. Details={1}".
                              format(nsi_id, e))
                 break
-            timeout -= self.timing_interval
-            sleep(1)
+            if not ns_deleted:
+                timeout -= self.timing_interval
+                # sleep(1)
+                sleep(self.timing_interval)
         if force:
             inst_url = "{}?FORCE=true".format(inst_url)
         delete = requests.delete(inst_url,
@@ -1211,7 +1369,7 @@ class OSM():
             raise osm_exception.OSMException(
                     {"error": detail,
                      "status": http_code})
-        return {"id": nsi_id, "status": http_code}
+        return {"ns-id": nsi_id, "status": http_code}
 
     @check_authorization
 #    @test_topic(some="value")
@@ -1222,6 +1380,12 @@ class OSM():
 
         # Retrieve details on NS and xNF
         nsi_details = self.get_ns_instance_details(nsi_id)
+
+        if nsi_details is not None and len(nsi_details.get("nsi")) == 0:
+            raise osm_exception.OSMInstanceNotFound(
+                {"error": "Instance with id={} does not exist".format(nsi_id),
+                 "status": HttpCode.NOT_FOUND})
+
         nsd = nsi_details.get("nsi")
         xni_ip = nsi_details.get("ip-infra")
 
@@ -1268,23 +1432,27 @@ class OSM():
                 data=yaml_dump(osm_payload),
                 verify=False)
             output = resp.json()
+            action_id = output.get("id")
             status_code = output.get("status")
             if status_code is None:
                 status_code = HttpCode.ACCEPTED
             if status_code >= 200 and status_code < 400:
-                LOGGER.info("NS with id={0} triggered action={1}".format(
-                            nsi_id, primitive_name))
-                if self.events_active:
-                    # Send notification to Portal
-                    self.notify_message_broker_portal(
-                            "action",
-                            "SC with id={0} triggered action={1}".
-                            format(nsi_id, primitive_name),
-                            xni_ip)
-                success_msg = {"ns-id": nsi_id,
-                               "action-name": primitive_name,
-                               "action-params": primitive_params,
-                               "status": status_code}
+                trigger_modes = ["action"]
+                event_msg = "SC with id={0} triggered action={1}".format(
+                            nsi_id, primitive_name)
+                LOGGER.info(event_msg)
+                event_args = {
+                   "xni-ip": xni_ip,
+                }
+                self.notify(
+                    trigger_modes, event_msg, **event_args)
+                success_msg = dict(ACTION_STATUS)
+                success_msg["ns-id"] = nsi_id
+                success_msg["ns-action-id"] = action_id
+                success_msg["ns-action-name"] = primitive_name
+                success_msg["ns-action-params"] = primitive_params
+                success_msg["ns-action-status"] = "processing"
+                success_msg["status"] = status_code
                 return success_msg
             else:
                 error_msg = {"status": status_code,

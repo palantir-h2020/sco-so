@@ -16,6 +16,7 @@ class SOEndpoints:
     # General subentities
     INFRA_SVC = "{}/service".format(INFRA)
     LCM_ACT = "{}/action".format(NS)
+    LCM_HLT = "{}/health".format(NS)
     TARGETS_METRICS = "{}/metrics".format(TARGETS)
     # Modules
     LCM = "{}lcm".format(ROOT)
@@ -24,6 +25,7 @@ class SOEndpoints:
     # Endpoints
     LCM_NS = "{}/ns".format(LCM)
     LCM_NS_ACT = "{}/action".format(LCM_NS)
+    LCM_NS_HLT = "{}/health".format(LCM_NS)
     LCM_XNF = "{}/xnf".format(LCM)
     MON_INFRA = "{}/infra".format(MON)
     MON_INFRA_SVC = "{}/service".format(MON_INFRA)

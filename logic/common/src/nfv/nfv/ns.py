@@ -18,6 +18,7 @@
 # from common.db.models.infra.node import Node as NodeModel
 from common.log.log import setup_custom_logger
 from common.nfv.nfvo.osm.osm_r10 import OSMR10
+from common.schemas.lcm_ns import NSInstanceActionExecWaitForData
 
 LOGGER = setup_custom_logger(__name__)
 
@@ -33,10 +34,13 @@ class OSMInterfaceNS:
                     self.orchestrator = self.orchestrator()
             else:
                 self.orchestrator = OSMR10()
-        except Exception:
+        except Exception as e:
             raise Exception(
-                "Cannot create instance of OSMR{}. Check the constructor."
-                .format(release))
+                "{}{}. {}. Details: {}"
+                .format("Cannot create instance of OSMR",
+                        release,
+                        "Check the constructor",
+                        e))
 
     def _select_args(self, args_list: list) -> str:
         if not isinstance(args_list, list):
@@ -75,8 +79,19 @@ class OSMInterfaceNS:
         #     node.delete()
         return self.orchestrator.delete_ns_instance(nsi_id, force)
 
-    def fetch_actions_in_ns(self, nsi_id):
-        return self.orchestrator.fetch_actions_data(nsi_id)
+    def fetch_actions_in_ns(self, nsi_id, action_id=None):
+        return self.orchestrator.fetch_actions_data(nsi_id, action_id)
 
-    def apply_action(self, nsi_id, params_actions):
-        return self.orchestrator.apply_action(nsi_id, params_actions)
+    def apply_action(self, nsi_id, params_actions, wait_for=None):
+        return self.orchestrator.apply_action(nsi_id, params_actions, wait_for)
+
+    def fetch_healthcheck_for_ns(self, nsi_id):
+        params_actions = {
+            "ns-action-name": "health-check",
+            "ns-action-params": {},
+        }
+        # Request synchronous action so to wait for it
+        output = self.orchestrator.apply_action(
+            nsi_id, params_actions,
+            wait_for=NSInstanceActionExecWaitForData.action_output)
+        return output

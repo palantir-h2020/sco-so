@@ -1,0 +1,17 @@
+dependencies:
+  aac:
+    - dbl
+  api:
+    - aac
+    - lcm
+    - mon
+    - pkg
+    - pol
+  lcm:
+    - dbl
+    - mon
+  pkg:
+    - dbl
+  pol:
+    - dbl
+    - mon

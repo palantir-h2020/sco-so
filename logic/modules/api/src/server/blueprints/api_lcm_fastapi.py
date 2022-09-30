@@ -9,6 +9,7 @@ from blueprints.schemas.lcm_ns import NSInstanceAction, \
         NSInstanceDeployment
 from common.config.modules.module_catalogue import ModuleCatalogue
 from common.exception import exception
+from common.schemas.lcm_ns import NSInstanceActionExecWaitForData
 from common.server.http.http_code import HttpCode
 from common.server.endpoints import SOEndpoints
 from fastapi import APIRouter, Request
@@ -79,19 +80,35 @@ def ns_inst_delete(request: Request, id: str,
     return requests.delete(requests_ep)
 
 
+@router.get(SOEndpoints.LCM_HLT, status_code=HttpCode.OK)
+@exception.handle_exc_resp
+def ns_inst_get_healthcheck(request: Request, id: str):
+    """
+    Details on healthcheck for a given NS.
+    """
+    requests_ep = "{}/ns/health?id={}".format(ep_base, id)
+    return requests.get(requests_ep)
+
+
 @router.get(SOEndpoints.LCM_ACT, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
-def ns_inst_get_actions(request: Request, id: str):
+def ns_inst_get_actions(request: Request, ns_id: str,
+                        action_id: Optional[str] = None):
     """
     Details on executed actions for a given NS.
     """
-    requests_ep = "{}/ns/action?id={}".format(ep_base, id)
+    requests_ep = "{}/ns/action?ns-id={}".format(
+        ep_base, ns_id)
+    if action_id is not None:
+        requests_ep = "{}&action-id={}".format(
+            requests_ep, action_id)
     return requests.get(requests_ep)
 
 
 @router.post(SOEndpoints.LCM_ACT, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def ns_inst_exec_action(request: Request, id: str,
+                        wait_for: NSInstanceActionExecWaitForData = "NONE",
                         action_data: NSInstanceAction = None,
                         ):
     """
@@ -99,16 +116,20 @@ def ns_inst_exec_action(request: Request, id: str,
 
     Bult-in actions: "terminate".
     """
-    requests_ep = "{}/ns/action?id={}".format(ep_base, id)
-    action_dict = {
-        "ns-action-name": action_data.action_name,
-        "ns-action-params": action_data.action_params
-    }
-    try:
-        action_dict["ns-action-params"] = json.dumps(
-            action_dict.get("ns-action-params"))
-    except Exception:
-        pass
+    requests_ep = "{}/ns/action?id={}&wait-for={}".format(
+        ep_base, id, wait_for)
+    if action_data is None:
+        action_dict = {}
+    else:
+        action_dict = {
+            "ns-action-name": action_data.action_name,
+        }
+        if action_data.action_params is not None:
+            try:
+                action_dict["ns-action-params"] = json.dumps(
+                    action_data.action_params)
+            except Exception:
+                pass
     return requests.post(requests_ep, data=action_dict)
 
 
