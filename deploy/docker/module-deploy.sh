@@ -20,6 +20,11 @@ function text_with_colour() {
     printf "${colour}${message}${nocolour}\n"
 }
 
+function text_warning() {
+    message=$@
+    text_with_colour "\033[0;33m" "${message}"
+}
+
 function text_error() {
     message=$@
     text_with_colour "\033[1;31m" "${message}"
@@ -59,15 +64,35 @@ fi
 
 # Copy common configuration first
 gen_cfg_path="${PWD}/../../../../../cfg"
+gen_dep_path="${PWD}/../../../../../deploy"
 modl_cfg_path="${PWD}/../../cfg"
 if [[ -d ${gen_cfg_path} ]]; then
     if [[ ! -d ${modl_cfg_path} ]]; then
-      mkdir -p ${modl_cfg_path}
+        mkdir -p ${modl_cfg_path}
     fi
     for cfg_file in $(ls ${gen_cfg_path}/*); do
         cfg_file_nosample="${cfg_file/.sample/}"
+        basename_cfg_file_nosample=$(basename "${cfg_file_nosample}")
+        # Verify cfg file is customised
         if [[ "${cfg_file}" == *.sample ]] && [[ ! -f ${cfg_file_nosample} ]]; then
-          error_exit "Configuration file \"$(realpath ${cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${cfg_file_nosample})\" and adjust the values"
+            error_exit "Configuration file \"$(realpath ${cfg_file})\" is not personalised. To do so, copy the file into \"$(realpath ${cfg_file_nosample})\" and adjust the values"
+        fi
+        # Verify cfg file does not differ from upstream
+        cfg_diff=$(python3 ${gen_dep_path}/diff_cfg.py "${cfg_file}")
+        added_keys=$(echo ${cfg_diff} | python3 -c "import sys, json; print(json.load(sys.stdin).get(\"added-keys\"))")
+        [[ "${added_keys}" == "[]" ]] && are_keys_added=0 || are_keys_added=1
+        removed_keys=$(echo ${cfg_diff} | python3 -c "import sys, json; print(json.load(sys.stdin).get(\"removed-keys\"))")
+        [[ "${removed_keys}" == "[]" ]] && are_keys_removed=0 || are_keys_removed=1
+        # If any key is added or removed...
+        # ...And this is not tackling the infra.yaml file (which can differ in its keys), show warning or error
+        if ([[ ${are_keys_added} -eq 1 ]] || [[ ${are_keys_removed} -eq 1 ]]) && [[ ${basename_cfg_file_nosample} != "infra.yaml" ]]; then
+            text_warning "Configuration file \"$(realpath ${cfg_file}.sample)\" is different to the local \"$(realpath ${cfg_file})\". Check these manually and adjust the values"
+            if [[ ${are_keys_removed} -eq 1 ]]; then
+                text_warning "\nConfiguration file \"$(realpath ${cfg_file}.sample)\" has removed the following keys:\n\t${removed_keys}\nIt is recommended to manually adjust the values in \"$(realpath ${cfg_file})\", but the deployment process will continue"
+            fi
+            if [[ ${are_keys_added} -eq 1 ]]; then
+                error_exit "\nConfiguration file \"$(realpath ${cfg_file}.sample)\" has added the following keys:\n\t${added_keys}\nIt is mandatory to manually adjust the values in \"$(realpath ${cfg_file})\" before deploying"
+            fi  
         fi
     done
     cp -Rp ${gen_cfg_path} .
