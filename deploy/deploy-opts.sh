@@ -123,7 +123,7 @@ function fetch_env_vars() {
 	[[ ! -L ${PWD}/${ln_dir}/utils ]] && ln -s ${PWD}/../logic/common/src/utils ${ln_dir}
     fi
     # Fetch container names and ports from cfg/modules.yaml
-    ENV_VARS+=($(python3 deploy_opts.py ${MODULE}))
+    ENV_VARS+=($(python3 fetch_env_vars.py ${MODULE}))
 
     # Add specific environment variables (related to paths, for proper replacement in files)
     ENV_VARS+=("DEPLOY_DIR=${DEPLOY_DIR}")

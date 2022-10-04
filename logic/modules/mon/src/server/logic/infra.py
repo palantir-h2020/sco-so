@@ -182,12 +182,14 @@ class Infra(object):
             image_ids = []
             container_ids = []
             for pod in pods_filter_pod:
-                if len(image_ids) == 0:
-                    image_ids = [st.image_id for st in
-                                 pod.status.container_statuses]
-                if len(container_ids) == 0:
-                    container_ids = [st.container_id for st in
+                pod_cont_status = pod.status.container_statuses
+                if pod_cont_status is not None:
+                    if len(image_ids) == 0:
+                        image_ids = [st.image_id for st in
                                      pod.status.container_statuses]
+                    if len(container_ids) == 0:
+                        container_ids = [st.container_id for st in
+                                         pod.status.container_statuses]
                 pod_desc = {"name": pod.metadata.name, "ip": pod.status.pod_ip,
                             "node-ip": pod.status.host_ip, "containers": []}
                 pod_cont_desc = {}
