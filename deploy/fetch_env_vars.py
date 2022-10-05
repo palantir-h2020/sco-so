@@ -17,8 +17,11 @@ def load_env_vars_from_yaml(file_name, mappings):
         env_map_k_paths = env_vars_map_k.split(".")
         d_data = dict(dict_contents)
         for env_map_k_path in env_map_k_paths:
-            d_data = d_data.get(env_map_k_path)
-        env_vars.append("{}={}".format(env_vars_map_v, d_data))
+            if d_data is not None:
+                d_data = d_data.get(env_map_k_path)
+        if d_data is not None:
+            env_vars.append("{}={}".format(
+                env_vars_map_v, d_data))
     return env_vars
 
 
@@ -29,8 +32,9 @@ def load_modules(file_name, module_name):
         dict_contents = dict_contents.get("modules", {})
         dict_contents = dict_contents.get(module_name, {})
         env_vars.append("SO_MODL_NAME={}".format(module_name))
-        env_vars.append("SO_MODL_API_PORT={}".format(
-            dict_contents.get("port")))
+        port = dict_contents.get("port")
+        if port is not None:
+            env_vars.append("SO_MODL_API_PORT={}".format(port))
     return env_vars
 
 

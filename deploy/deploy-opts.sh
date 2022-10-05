@@ -69,6 +69,13 @@ DEPLOY_DIR=$(realpath $(dirname $0))
 # Replace environment variables in the provided array of template files
 function replace_specific_vars() {
     template_files=( "$@" )
+    # Enforce that at least the module's name and port are available
+    declare -a env_vars_required_for_templates=("SO_MODL_NAME" "SO_MODL_API_PORT")
+    for env_var_required in ${env_vars_required_for_templates[@]}; do
+        if [[ ! "${ENV_VARS_NAMES[*]}" =~ "${env_var_required}" ]]; then
+            error_exit "Missing env var named \"${env_var_required}\" required to replace in templates.\nCheck file $(realpath ${DEPLOY_DIR}/../cfg/modules.yaml) for missing keys"
+        fi
+    done
     for template_file in "${template_files[@]}"; do
         template_file_subst="${template_file%%.tpl}"
         echo "Replacing variables: $(realpath ${template_file}) > $(realpath ${template_file_subst})"
