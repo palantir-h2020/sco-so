@@ -728,7 +728,6 @@ class OSM():
         actions_ret.update({"actions": actions_ret_list})
         return {"status": HttpCode.OK, **actions_ret}
 
-    # TODO: REUSE CODE FROM SOMEWHERE
     def monitor_ns_action(self, nsi_id: str, action_id: str,
                           target_status=None):
         timeout = self.timing_to_act
@@ -748,7 +747,7 @@ class OSM():
             operational_status = action.get("actions", [None])[0].get("status")
             if operational_status is not None:
                 operational_status = operational_status.lower()
-            LOGGER.debug("Operational status: {0} ...".format(
+            LOGGER.debug("Operational status (action): {0} ...".format(
                 operational_status))
             # When target is met and action has been executed...
             if operational_status == self.action_expected_status:
@@ -785,6 +784,10 @@ class OSM():
             NSInstanceActionExecWaitForData.action_id
         wait_for_action_output = wait_for == \
             NSInstanceActionExecWaitForData.action_output
+        # Enforce the default option if none was selected
+        if not any(
+                [wait_for_none, wait_for_action_id, wait_for_action_output]):
+            wait_for_none = True
 
         # Check whether NS instance exists
         nss = self.get_ns_instances(nsi_id)
@@ -824,9 +827,9 @@ class OSM():
         # (1) The first part is common whether waiting for the action
         # ID or its full output
         elif wait_for_action_id or wait_for_action_output:
-            ns_not_deployed = True
-            while ns_not_deployed:
-                ns_not_deployed = self.monitor_ns_deployment(
+            ns_deployed = False
+            while not ns_deployed:
+                ns_deployed = self.monitor_ns_deployment(
                     nsi_id, current_app._get_current_object(),
                     trigger_modes, target_status)
             # Execute action only if any provided
@@ -880,9 +883,9 @@ class OSM():
             # operational_status = nss.get("operational-status", "")
             operational_status = nss.get("ns")[0].get("status")\
                                     .get("operational")
-            LOGGER.debug("Operational status: {0} ...".format(
+            LOGGER.debug("Operational status (deployment): {0} ...".format(
                 operational_status))
-            if operational_status == "failed":
+            if "failed" == operational_status:
                 LOGGER.info("Instance failed, aborting")
                 output.update({
                     "status": HttpCode.INTERNAL_ERROR,
@@ -896,8 +899,8 @@ class OSM():
             if not ns_deployed:
                 sleep(self.timing_interval)
                 timeout = timeout-self.timing_interval
-        # Notify if finally deployed
-        if ns_deployed:
+        # Notify if finally deployed (if this is the monitored action)
+        if ns_deployed and "deployment" in trigger_modes:
             # Retrieve details on NS and xNF
             nsi_details = self.get_ns_instance_details(nsi_id)
             xni_ip = nsi_details.get("ip-infra")
