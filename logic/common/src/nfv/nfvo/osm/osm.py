@@ -501,72 +501,70 @@ class OSM():
             "status": HttpCode.ACCEPTED}
 
     def upload_xnfd_package(self, bin_file):
-
-        # TODO: remove
-        print("xnf bin_file={}".format(bin_file))
-        error_upload = False
-        pkg_name = "snort_cnf"
-        try:
-            if bin_file is None:
-                # Hardcoded value, remember to have the package on
-                # the container and to have it updated
-                pkg_path = "{}.tar.gz".format(pkg_name)
-                if os.path.isfile(pkg_path):
-                    fp = open(pkg_path, "rb")
-                    filename = os.path.basename(pkg_path)
-                    mime = MimeTypes()
-                    content_type = mime.guess_type(pkg_path)
-                    bin_file = FileStorage(
-                        fp, filename, "package", content_type)
-                else:
-                    error_upload = True
-        except Exception:
-            error_upload = True
+        # # TODO: remove
+        # print("xnf bin_file={}".format(bin_file))
+        # error_upload = False
+        # pkg_name = "snort_cnf"
+        # try:
+        #     if bin_file is None:
+        #         # Hardcoded value, remember to have the package on
+        #         # the container and to have it updated
+        #         pkg_path = "{}.tar.gz".format(pkg_name)
+        #         if os.path.isfile(pkg_path):
+        #             fp = open(pkg_path, "rb")
+        #             filename = os.path.basename(pkg_path)
+        #             mime = MimeTypes()
+        #             content_type = mime.guess_type(pkg_path)
+        #             bin_file = FileStorage(
+        #                 fp, filename, "package", content_type)
+        #         else:
+        #             error_upload = True
+        # except Exception:
+        #     error_upload = True
 
         # TODO: uncomment
         # Endpoint: "/xnfpkgm/v1/xnf_packages_content"
-        # return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
-        if error_upload:
-            existing_xnfd = self.get_xnf_descriptor(pkg_name)
-            existing_xnfd_id = existing_xnfd.get("_id")
-            print("Package={} has ID={}".format(pkg_name, existing_xnfd_id))
-            return {"xnf-pkg-id": existing_xnfd_id}
-        else:
-            return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
+        return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
+        # if error_upload:
+        #     existing_xnfd = self.get_xnf_descriptor(pkg_name)
+        #     existing_xnfd_id = existing_xnfd.get("_id")
+        #     print("Package={} has ID={}".format(pkg_name, existing_xnfd_id))
+        #     return {"xnf-pkg-id": existing_xnfd_id}
+        # else:
+        #     return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
 
     def upload_nsd_package(self, bin_file):
-
-        # TODO: remove
-        print("nsd bin_file={}".format(bin_file))
-        error_upload = False
-        pkg_name = "snort_ns"
-        try:
-            if bin_file is None:
-                # Hardcoded value, remember to have the package on
-                # the container and to have it updated
-                pkg_path = "{}.tar.gz".format(pkg_name)
-                if os.path.isfile(pkg_path):
-                    fp = open(pkg_path, "rb")
-                    filename = os.path.basename(pkg_path)
-                    mime = MimeTypes()
-                    content_type = mime.guess_type(pkg_path)
-                    bin_file = FileStorage(
-                        fp, filename, "package", content_type)
-                else:
-                    error_upload = True
-        except Exception:
-            error_upload = True
+        # # TODO: remove
+        # print("nsd bin_file={}".format(bin_file))
+        # error_upload = False
+        # pkg_name = "snort_ns"
+        # try:
+        #     if bin_file is None:
+        #         # Hardcoded value, remember to have the package on
+        #         # the container and to have it updated
+        #         pkg_path = "{}.tar.gz".format(pkg_name)
+        #         if os.path.isfile(pkg_path):
+        #             fp = open(pkg_path, "rb")
+        #             filename = os.path.basename(pkg_path)
+        #             mime = MimeTypes()
+        #             content_type = mime.guess_type(pkg_path)
+        #             bin_file = FileStorage(
+        #                 fp, filename, "package", content_type)
+        #         else:
+        #             error_upload = True
+        # except Exception:
+        #     error_upload = True
 
         # TODO: uncomment
         # Endpoint: "/nsd/v1/ns_descriptors_content"
-        # return self.upload_package(bin_file, self.url_nsd_detail, "ns")
-        if error_upload:
-            existing_nsd = self.get_ns_descriptor(pkg_name)
-            existing_nsd_id = existing_nsd.get("_id")
-            print("Package={} has ID={}".format(pkg_name, existing_nsd_id))
-            return {"ns-pkg-id": existing_nsd_id}
-        else:
-            return self.upload_package(bin_file, self.url_nsd_detail, "ns")
+        return self.upload_package(bin_file, self.url_nsd_detail, "ns")
+        # if error_upload:
+        #     existing_nsd = self.get_ns_descriptor(pkg_name)
+        #     existing_nsd_id = existing_nsd.get("_id")
+        #     print("Package={} has ID={}".format(pkg_name, existing_nsd_id))
+        #     return {"ns-pkg-id": existing_nsd_id}
+        # else:
+        #     return self.upload_package(bin_file, self.url_nsd_detail, "ns")
 
     def guess_descriptor_type(self, package_name):
         res = {}
