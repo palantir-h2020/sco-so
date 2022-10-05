@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   so_dbl:
-    image: mongo:5.0.9
+    image: mongo:4.2.23
     container_name: so-${SO_MODL_NAME}
     hostname: ${SO_MODL_NAME}
     restart: unless-stopped
