@@ -149,6 +149,12 @@ fi
 if [[ "${build_only}" != "build" ]] && [[ -f docker-compose.yml ]]; then
     docker-compose -p ${SO_MODL_NAME} up -d
     docker-compose -p ${SO_MODL_NAME} ps
+    if [[ ! -z ${SO_MODL_NAME} ]]; then
+        running_container=$(docker ps -a | grep ${SO_MODL_NAME})
+        if [[ ! "${running_container}" ]]; then
+            error_exit "Module \"${SO_MODL_NAME}\" could not deploy. Try manually removing the \"$(realpath ${PWD}/Dockerfile)\" and re-deploying again"
+        fi
+    fi
 else
     # Build the image only if not already present (two rows: headers & image)
     if [[ $(docker image ls ${docker_image_prefix}_${SO_MODL_NAME} | wc -l) -lt 2 ]]; then

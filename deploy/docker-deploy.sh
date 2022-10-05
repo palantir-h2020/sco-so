@@ -141,7 +141,7 @@ function copy_replace_files() {
     env_file="${PWD}/../cfg/modules.yaml"
 
     if [[ ! -f "${env_file}" ]]; then
-        error_msg="No environment variables found with component's information\n"
+        error_msg="No environment variables found with the module's information\n"
         error_msg+="Missing file: $(realpath ${env_file})"
         # If no specific module is provided (via $MODULE), attempt all available modules to deploy
         if [[ -z $MODULE ]]; then
