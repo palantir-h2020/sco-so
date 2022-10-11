@@ -51,19 +51,14 @@ def xnf_pkg_list(request: Request, id: Optional[str] = None,
 @router.post(SOEndpoints.XNF, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def xnf_pkg_onboard(request: Request,
-                    # TODO: uncomment
-                    # package: UploadFile = File(
-                    # ..., description="xNF in a .tar.gz")) -> HttpResponse:
-                    # TODO: remove
-                    package: Optional[UploadFile] = File(
-                        None, description="xNF in a .tar.gz")) -> HttpResponse:
+                    package: UploadFile = File(
+                     ..., description="xNF in a .tar.gz")) -> HttpResponse:
     """
     Uploads an xNF package as a .tar.gz file.
+    Note: clients to provide (+/-) a {"package": "<bytestream>"} body.
     """
     requests_ep = "{}/xnf".format(ep_base)
-    # TODO: uncomment
-    # file_data = {"file": package.file.read()}
-    # TODO: remove
+    # Package is mandatory anyway, so it would never be None
     if package is not None and package.file is not None:
         file_data = {"file": package.file.read()}
     else:
@@ -101,19 +96,14 @@ def ns_pkg_list(request: Request, id: Optional[str] = None,
 @router.post(SOEndpoints.NS, status_code=HttpCode.ACCEPTED)
 @exception.handle_exc_resp
 def ns_pkg_onboard(request: Request,
-                   # TODO: uncomment
-                   # package: UploadFile = File(
-                   # ..., description="NS in a .tar.gz")) -> HttpResponse:
-                   # TODO: remove
-                   package: Optional[UploadFile] = File(
-                        None, description="NS in a .tar.gz")) -> HttpResponse:
+                   package: UploadFile = File(
+                    ..., description="NS in a .tar.gz")) -> HttpResponse:
     """
     Uploads a NS package as a .tar.gz file.
+    Note: clients to provide (+/-) a {"package": "<bytestream>"} body.
     """
     requests_ep = "{}/ns".format(ep_base)
-    # TODO: uncomment
-    # file_data = {"file": package.file.read()}
-    # TODO: remove
+    # Package is mandatory anyway, so it would never be None
     if package is not None and package.file is not None:
         file_data = {"file": package.file.read()}
     else:

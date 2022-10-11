@@ -522,9 +522,9 @@ class OSM():
         # except Exception:
         #     error_upload = True
 
-        # TODO: uncomment
         # Endpoint: "/xnfpkgm/v1/xnf_packages_content"
         return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
+        # TODO: remove
         # if error_upload:
         #     existing_xnfd = self.get_xnf_descriptor(pkg_name)
         #     existing_xnfd_id = existing_xnfd.get("_id")
@@ -555,9 +555,9 @@ class OSM():
         # except Exception:
         #     error_upload = True
 
-        # TODO: uncomment
         # Endpoint: "/nsd/v1/ns_descriptors_content"
         return self.upload_package(bin_file, self.url_nsd_detail, "ns")
+        # TODO: remove
         # if error_upload:
         #     existing_nsd = self.get_ns_descriptor(pkg_name)
         #     existing_nsd_id = existing_nsd.get("_id")

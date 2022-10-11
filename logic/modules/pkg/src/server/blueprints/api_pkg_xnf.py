@@ -23,9 +23,7 @@ def list_pkg_xnf():
 @so_blueprints.route(SOEndpoints.PKG_XNF, methods=["POST"])
 @exception.handle_exc_resp
 def upload_pkg_xnf():
-    ## TODO: uncomment
-    # _pkg_file = request.files.get("file")
-    ## TODO: remove
+    # Package is mandatory anyway, so it would never be None
     if request is not None and request.files is not None:
         _pkg_file = request.files.get("file")
     else:
