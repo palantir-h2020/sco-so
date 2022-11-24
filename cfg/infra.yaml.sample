@@ -1,7 +1,7 @@
 infrastructure:
   tenant1-k8s-cluster:
      id: 3f5eb7fa-a58d-4589-a93b-7ae403716a0f
-     osm-vim-id: f73942cc-de3e-4b5c-a5ac-8a98dcfe19bd
+     osm-vim-id: 6663bb03-5fc1-47fe-8628-f8b80c53faf6
      type: kubernetes
      config:
        file: "./deploy/local/tenant1-k8s-cluster.yaml"
