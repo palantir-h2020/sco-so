@@ -501,6 +501,7 @@ class OSM():
             "status": HttpCode.ACCEPTED}
 
     def upload_xnfd_package(self, bin_file):
+
         # # TODO: remove
         # print("xnf bin_file={}".format(bin_file))
         # error_upload = False
@@ -522,9 +523,9 @@ class OSM():
         # except Exception:
         #     error_upload = True
 
+        # TODO: uncomment
         # Endpoint: "/xnfpkgm/v1/xnf_packages_content"
         return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
-        # TODO: remove
         # if error_upload:
         #     existing_xnfd = self.get_xnf_descriptor(pkg_name)
         #     existing_xnfd_id = existing_xnfd.get("_id")
@@ -534,7 +535,8 @@ class OSM():
         #     return self.upload_package(bin_file, self.url_xnfd_detail, "xnf")
 
     def upload_nsd_package(self, bin_file):
-        # # TODO: remove
+
+        # TODO: remove
         # print("nsd bin_file={}".format(bin_file))
         # error_upload = False
         # pkg_name = "snort_ns"
@@ -555,9 +557,9 @@ class OSM():
         # except Exception:
         #     error_upload = True
 
+        # # TODO: uncomment
         # Endpoint: "/nsd/v1/ns_descriptors_content"
         return self.upload_package(bin_file, self.url_nsd_detail, "ns")
-        # TODO: remove
         # if error_upload:
         #     existing_nsd = self.get_ns_descriptor(pkg_name)
         #     existing_nsd_id = existing_nsd.get("_id")
@@ -670,15 +672,15 @@ class OSM():
                 "name": package_name, "pkg-id": descriptor_id,
                 "status": response.status_code}
         elif response.status_code == 409:
-            parsed_error, status = OSMResponseParsing.parse_error_msg(response)
-            parsed_error = parsed_error.get("detail", parsed_error)
+            parsed_error, status = OSMResponseParsing.parse_failed(response)
+            parsed_error = parsed_error.get("error", parsed_error)
             raise osm_exception.OSMPackageConflict(
                     {"error": parsed_error, "status": status})
         else:
-            res_details = OSMResponseParsing.parse_failed(response)
+            parsed_error, status = OSMResponseParsing.parse_failed(response)
             raise osm_exception.OSMException({
-                    "error": str(res_details),
-                    "status": HttpCode.INTERNAL_ERROR})
+                    "error": parsed_error.get("error", parsed_error),
+                    "status": status or HttpCode.INTERNAL_ERROR})
 
     # Running instances
 

@@ -47,7 +47,7 @@ class OSMResponseParsing:
             try:
                 res_details = json.loads(res_details)
                 # This shall also update the status
-                exc_ret.update({"error": res_details.get("error")})
+                exc_ret.update({"error": res_details.get("detail")})
                 status = res_details.get("status", status)
             except Exception:
                 res_details = str(res_details)
