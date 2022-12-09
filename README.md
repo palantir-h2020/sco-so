@@ -11,9 +11,39 @@ All dependencies will be installed with the deployment scripts.
 Before deployment, please check the following.
 
 ### Configuration
+
 - Verify and adjust your custom configuration in all sample files under `./cfg`.
   - Copy first each ".yaml.sample" file into a ".yaml" file; then fill in with the proper data for your environment.
+    - aac.yaml: no need to modify unless explicit changes are required.
+    - db.yaml: no need to modify unless explicit changes are required.
+    - dependencies.yaml: do not modify.
+    - events.yaml: update with the IP and port of the Kafka to be used.
+    - infra.yaml: update with the list of infrastructures (understood as Kubernetes cluster). Each entry shall include:
+      - id: a manually provided UUID4 to identify them uniquely.
+      - osm-vim-id: UUID4 given by OSM to the VIM (a dummy-vim used by the Kubernetes cluster), after [registering it there](https://osm.etsi.org/docs/user-guide/latest/05-osm-usage.html#adding-kubernetes-cluster-to-osm).
+      - config.file: location of the kubeconfig file of the infrastructure, which is *relative to ./logic/modules/mon/deploy/local* and must be manually placed there.
+      - tenant: name of the organisation who owns the cluster.
+      - deployments: list of the supported deployment modes. Expected values: "cloud", "edge", "vcpe".
+    - modules.yaml: no need to modify unless explicit changes are desired (e.g. changing ports for the services of SO). Modification not recommended (not fully tested).
+    - so.yaml: update with the details for the SO:
+      - so.ip: IP in which the SO runs.
+      - osm.nbi: IP (host) in which OSM runs.
+      - osm.vim.fallback: UUID4 given by OSM to the VIM that wants to be used as default cluster for deployment.
+      - timings.interval: frequency (in seconds) of the requests produced by SO to OSM when fetching information on the status of the NSs and their actions.
+      - timings.timeout.default: max time (in seconds) to wait for any generic operation (not contemplated below) to be completed in OSM.
+      - timings.timeout.instantiation: max time (in seconds) to wait for the instantiation operation to be completed in OSM.
+      - timings.timeout.action: max time (in seconds) to wait for the action (sent to a running NS) to be completed in OSM.
+      - timings.timeout.scale: max time (in seconds) to wait for the scale operation (enacted on a running NS) to be completed in OSM. Not used at the moment.
+      - timings.timeout.termination: max time (in seconds) to wait for the termination (stopping the running NS) operation (enacted on a running NS) to be completed in OSM.
+      - timings.timeout.deletion: max time (in seconds) to wait for the deletion (removal of the running NS) operation (enacted on a running NS) to be completed in OSM.
+      - events: enables/disables sending events to Kafka and indicates specific names for the topics (where the key is used within the code and the value is the actual name of the Kafka topic in use).
+      - xnfs.general: defines the default user and location of the SSH key (which must be manually placed under the ./keys folder, relative to the root of the repository, and given "660" permissions).
 - Check module-specific configuration under their folder, i.e. under `./logic/module/<module>/cfg`.
+  - MON
+    - mon.yaml (NOTE: only working for NSs running VMS in their VNFs):
+      - prometheus: configuration for the IP (host), port, protocol and username for the Prometheus server instance + port used by Prometheus exporters in the targets.
+      - metrics.targets.scrape_interval: frequency (in seconds) between retrieval of metrics from the targets.
+      - metrics.targets.allowed_commands: whitelist of base UNIX commands allowed to be submitted by the operator when monitoring custom metrics.
 
 ### Infrastructure
 
