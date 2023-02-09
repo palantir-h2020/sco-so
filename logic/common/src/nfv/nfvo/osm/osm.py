@@ -366,7 +366,10 @@ class OSM():
         out_nsd["name"] = nsd.get("id")
         out_nsd["id"] = nsd.get("_id")
         out_nsd["description"] = nsd.get("description")
-        out_nsd["vendor"] = nsd.get("vendor", None)
+        out_nsd["provider"] = \
+            nsd.get("designer",
+                    nsd.get("provider",
+                            nsd.get("vendor", None)))
         out_nsd["version"] = nsd.get("version", None)
         out_nsd["xnfs"] = nsd.get("vnfd-id")
         out_nsd["virtual-links"] = [
@@ -374,26 +377,50 @@ class OSM():
             ]
         return out_nsd
 
+    def filter_output_xnfd_action(self, xnf_action_block):
+        primitives = []
+        if xnf_action_block is None:
+            return primitives
+        for action in xnf_action_block:
+            prim = {
+                "name": action.get("name"),
+                "parameter": {},
+            }
+            if action.get("parameter") is None:
+                continue
+            for action_param in action.get("parameter"):
+                param_value = action_param.get("value")
+                if param_value is None:
+                    param_value = action_param.get("default-value")
+                prim["parameter"].update({
+                    "name": action_param.get("name"),
+                    "type": action_param.get("data-type"),
+                    "value": param_value,
+                })
+            primitives.append(prim)
+        return primitives
+
     def filter_output_xnfd(self, xnf):
         out_xnfd = {}
         out_xnfd["name"] = xnf.get("id")
         out_xnfd["id"] = xnf.get("_id")
         out_xnfd["description"] = xnf.get("description")
-        out_xnfd["vendor"] = xnf.get("vendor", None)
+        out_xnfd["provider"] = \
+            xnf.get("designer",
+                    xnf.get("provider",
+                            xnf.get("vendor", None)))
         out_xnfd["version"] = xnf.get("version", None)
         try:
             xnf_lcm_ops_cfg = \
                     xnf.get("df", [{}])[0]["lcm-operations-configuration"]
             xnf_lcm_xnf_ops_cfg = xnf_lcm_ops_cfg.get("operate-vnf-op-config")
             xnf_lcm_xnf_ops_day12_cfg = xnf_lcm_xnf_ops_cfg.get("day1-2")
-            day0_prims = [
-                x.get("name") for x in
-                xnf_lcm_xnf_ops_day12_cfg[0].get("initial-config-primitive")
-                ]
-            day12_prims = []
-            for day12_prim in xnf_lcm_xnf_ops_day12_cfg:
-                config_prim = day12_prim.get("config-primitive")[0]
-                day12_prims.append(config_prim.get("name"))
+            day0_prims = self.filter_output_xnfd_action(
+                    xnf_lcm_xnf_ops_day12_cfg[0].get(
+                        "initial-config-primitive"))
+            day12_prims = self.filter_output_xnfd_action(
+                    xnf_lcm_xnf_ops_day12_cfg[0].get(
+                        "config-primitive"))
             out_xnfd["config-actions"] = {
                 "day0": day0_prims, "day1-2": day12_prims
                 }
