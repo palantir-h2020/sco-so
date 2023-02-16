@@ -15,7 +15,7 @@ from common.utils.file_handling import FileHandling
 from kubernetes import client as k8s_client, config as k8s_config
 from kubernetes.config.config_exception import ConfigException as\
     K8sConfigException
-import math
+# import math
 import yaml
 
 LOGGER = setup_custom_logger(__name__)
@@ -47,6 +47,23 @@ class SOKubernetes():
         except K8sConfigException:
             raise SOConfigException("Missing file: {}".format(k8s_cfg_file))
 
+    def _format_node_specs(self, node_data):
+        node_cpu = int(node_data.get("cpu"))
+        # This was in bytes
+        node_ram = node_data.get("memory")
+        # node_ram = int(node_ram.replace("Ki", ""))
+        # node_ram = math.floor(node_ram / 1000)
+        # This is in kbytes and included the units
+        node_disk = node_data.get("ephemeral-storage")
+        # node_disk = int(node_disk.replace("Ki", ""))
+        # node_disk = math.floor(node_disk / (1000*1000))
+        node_dict = {
+            "cpu": node_cpu,
+            "ram": node_ram,
+            "disk": node_disk,
+            }
+        return node_dict
+
     def nodes_describe(self, infra_id: str) -> dict():
         # Parameters defined under /usr/local/lib/python3.8/
         # site-packages/kubernetes/client/api/core_v1_api.py
@@ -70,21 +87,21 @@ class SOKubernetes():
             node_name = list(filter(
                 lambda x: x.type == "Hostname",
                 node_addresses))[0].address
-            node_cpu = int(r._status.allocatable.get("cpu"))
-            # This was in bytes
-            node_ram = r._status.allocatable.get("memory")
-            node_ram = int(node_ram.replace("Ki", ""))
-            node_ram = math.floor(node_ram / 1000)
-            # This is in kbytes and included the units
-            node_disk = r._status.allocatable.get("ephemeral-storage")
-            node_disk = int(node_disk.replace("Ki", ""))
-            node_disk = math.floor(node_disk / (1000*1000))
             node_dict = {
                 "name": node_name,
-                "cpu": node_cpu,
-                "ram": node_ram,
-                "disk": node_disk,
-                }
+                "available": {},
+                "total": {},
+            }
+            # Available / Allocatable
+            node_data = r._status.allocatable
+            node_dict_available = self._format_node_specs(node_data)
+            if node_dict_available is not None:
+                node_dict["available"] = node_dict_available
+            # Total / Capacity
+            node_data = r._status.capacity
+            node_dict_total = self._format_node_specs(node_data)
+            if node_dict_total is not None:
+                node_dict["total"] = node_dict_total
             if node_dict is not None:
                 result.get("nodes").append(node_dict)
         return result
