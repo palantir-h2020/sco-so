@@ -34,6 +34,8 @@ events:
   topics:
     instantiation-ae: ae.register-sc
     actions-portal: actions-notifications
+    sm-requests: cmr.requests
+    sm-responses: cmr.responses
 
 # Network Function access
 xnfs:
