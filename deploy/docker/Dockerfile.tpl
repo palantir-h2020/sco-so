@@ -59,5 +59,5 @@ RUN ([ -f local/apt ] && (cat local/apt | xargs apt-get install -y)) || true
 RUN ([ -f local/pip ] && pip3 install -r local/pip) || true
 
 WORKDIR ${SO_ROOT}
-#CMD ["python3", "main.py"]
-CMD ["sleep", "infinity"]
+CMD ["python3", "main.py"]
+#CMD ["sleep", "infinity"]
