@@ -239,8 +239,8 @@ class OSM():
 
     def notify(self, trigger_modes: str, event_msg: str, **kwargs):
         """
-        Notify the successful execution of a given action
-        to all involved components
+        Notify the successful execution of one or more actions
+        (i.e. "trigger_modes) to all involved components
         """
         if self.events_active:
             trigger_mode = trigger_modes[0]
@@ -267,10 +267,18 @@ class OSM():
                                      args=(nsi_id,))
                 t.start()
 
-            if "action" in trigger_modes:
+            trigger_mode_action = None
+            for mode in trigger_modes:
+                if mode.startswith("action."):
+                    trigger_mode_action = mode.replace("action.", "")
+                    break
+                if mode.startswith("action"):
+                    trigger_mode_action = "action"
+                    break
+            if trigger_mode_action is not None:
                 # Notify Portal
                 t = threading.Thread(target=self.notify_message_broker_portal,
-                                     args=("action",
+                                     args=(trigger_mode_action,
                                            event_msg,
                                            xni_ip))
                 t.start()
@@ -1467,7 +1475,7 @@ class OSM():
             if status_code is None:
                 status_code = HttpCode.ACCEPTED
             if status_code >= 200 and status_code < 400:
-                trigger_modes = ["action"]
+                trigger_modes = ["action.{}".format(primitive_name)]
                 event_msg = "SC with id={0} triggered action={1}".format(
                             nsi_id, primitive_name)
                 LOGGER.info(event_msg)
