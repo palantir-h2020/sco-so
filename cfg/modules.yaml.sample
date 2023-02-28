@@ -7,6 +7,10 @@ modules:
     title: "API"
     description: "API exposed to external clients"
     port: 50101
+  cfg:
+    title: "Configuration"
+    description: "System-wide configuration service"
+    port: 50103
   dbl:
     title: "Database layer"
     description: "Database service"

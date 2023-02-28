@@ -6,6 +6,7 @@
 
 
 from flask import jsonify
+from common.server.http.content import AllowedContentTypes
 from common.server.http.http_code import HttpCode
 try:
     from common.server.http.http_response_fastapi import HttpResponse
@@ -24,13 +25,30 @@ def handle_exc_resp(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         try:
+            ct_accept = AllowedContentTypes.CONTENT_TYPE_JSON.value
             status = HttpCode.OK
             result = func(*args, **kwargs)
-            if isinstance(result, Response):
-                status = result.status_code
-                result = result._content
-                if isinstance(result, bytes):
-                    result = result.decode("ascii")
+            if "Response" in str(type(result)):
+                # FastAPI (default)
+                if isinstance(result, Response):
+                    status = result.status_code
+                    result = result._content
+                    if isinstance(result, bytes):
+                        result = result.decode("ascii")
+                # Flask (consider removing or deleting)
+                else:
+                    ct_accept = result.content_type
+                    status = result.status_code
+                    result = result.response
+                    if isinstance(result, bytes):
+                        result = result.decode("ascii")
+                    if ct_accept == AllowedContentTypes\
+                        .CONTENT_TYPE_YAML.value and\
+                            isinstance(result, list) and len(result) == 1:
+                        result = result[0]
+                        if isinstance(result, bytes):
+                            result = result.decode("ascii")
+                        result = [result]
             else:
                 try:
                     status = result.get("status")
@@ -43,7 +61,8 @@ def handle_exc_resp(func):
             # content has priority and the HTTP code is adjusted
             if status == 204 and len(result) > 0:
                 status = HttpCode.ACCEPTED
-            return HttpResponse.json(status, result)
+            # return HttpResponse.json(status, result)
+            return HttpResponse.infer(result, status, ct_accept)
         except ConnectionError as e:
             e_msg = str(e)
             final_msg = "Network timeout. Details: {}".format(e_msg)

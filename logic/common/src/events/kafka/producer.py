@@ -13,6 +13,7 @@ from common.config.parser.fullparser import FullConfParser
 from common.log.log import setup_custom_logger
 from common.server.http import content
 from kafka import KafkaProducer
+# from confluent_kafka import Producer as KafkaProducer
 import json
 import time
 
@@ -35,7 +36,18 @@ class SOProducer():
                 bootstrap_servers=["{}:{}".format(self.host, self.port)],
                 value_serializer=lambda v: json.dumps(v).encode("utf-8")
                 )
+        # self.producer = KafkaProducer({
+        #     "bootstrap.servers": "{}:{}".format(self.host, self.port)
+        #     })
         self.topic = topic
+
+    def receipt(self, err, msg):
+        if err is not None:
+            print("Error: {}".format(err))
+        else:
+            message = "Produced message on topic {} with value of {}\n".format(
+                    msg.topic(), msg.value().decode("utf-8"))
+            print(message)
 
     def write(self, data):
         # Enforce writing in JSON as much as possible
@@ -43,5 +55,11 @@ class SOProducer():
         pkt = self.producer.send(
                 self.topic,
                 data)
+        # self.producer.poll()
+        # self.producer.produce(
+        #         producer_topic,
+        #         json.dumps(data).encode("utf-8"),
+        #         callback=self.receipt)
+        # self.producer.flush()
         time.sleep(0.3)
         return pkt
