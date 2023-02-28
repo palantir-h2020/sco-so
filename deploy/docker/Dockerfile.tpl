@@ -60,4 +60,3 @@ RUN ([ -f local/pip ] && pip3 install -r local/pip) || true
 
 WORKDIR ${SO_ROOT}
 CMD ["python3", "main.py"]
-#CMD ["sleep", "infinity"]
